@@ -1,0 +1,8 @@
+#!/bin/bash
+
+echo "ALL ALL = NOPASSWD:/usr/bin/wch" > /etc/sudoers.d/wch
+chmod +x wch
+cp wch /usr/bin/
+cp libwch55xisp.so /usr/lib/
+cd /driver
+make install

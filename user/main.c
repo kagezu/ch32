@@ -2,7 +2,7 @@
 
 void GPIO_Toggle_INIT(void);
 
-#define MAX_STEP_MS 1000
+#define MAX_STEP_MS 2000
 #define ONE_STEP_MS 1
 #define ONE_STEP_US 1000
 
@@ -11,7 +11,7 @@ void GPIO_Toggle_INIT(void);
 int main(void) {
   Delay_Init();
   GPIO_Toggle_INIT();
-  u16 i = 0;
+  u32 i = 0;
 
   while (1) {
     if (!(GPIOA->INDR & GPIO_Pin_0)) {
@@ -19,15 +19,17 @@ int main(void) {
       else GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_RESET);
       Delay_Ms(ONE_STEP_MS);
     } else {
-      u16 k = i > MAX_STEP_MS >> 1 ? MAX_STEP_MS - i : i;
+      u32 k = i > MAX_STEP_MS >> 1 ? MAX_STEP_MS - i : i;
       k = (k << 1) * ONE_STEP_US / MAX_STEP_MS;
+      k = k * k / ONE_STEP_US;
 
       GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_SET);
       Delay_Us(k);
-      
+
       GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_RESET);
       Delay_Us(ONE_STEP_US - k);
     }
+
     i++;
     if (i > MAX_STEP_MS) i = 0;
   }
@@ -47,6 +49,3 @@ void GPIO_Toggle_INIT(void) {
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 }
-
-//  if(i<100) GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_SET);
-//  else GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_RESET);

@@ -25,6 +25,11 @@
 				"parentLogicPath": "",
 				"type": "file",
 				"name": ".gitignore"
+			},
+			{
+				"name": "driver",
+				"parentLogicPath": "tool/uploader",
+				"type": "folder"
 			}
 		],
 		"projectName": "ch32",
@@ -44,7 +49,7 @@
 				"stop_on_first_build_error": true,
 				"pre_script": "",
 				"pre_script_description": "",
-				"post_script": "",
+				"post_script": "${project}/tool/uploader/upload.sh ${project}",
 				"post_script_description": "",
 				"excludeResources": [
 					"${project}/Startup/startup_ch32v20x_D8W.S",
