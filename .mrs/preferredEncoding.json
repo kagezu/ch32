@@ -1,0 +1,16 @@
+{
+	"details": [
+		{
+			"file": "tool/uploader/install",
+			"encoding": "utf8"
+		},
+		{
+			"file": "tool/uploader/readme.md",
+			"encoding": "utf8"
+		},
+		{
+			"file": "user/main.c",
+			"encoding": "utf8"
+		}
+	]
+}

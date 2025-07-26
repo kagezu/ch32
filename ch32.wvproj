@@ -27,9 +27,14 @@
 				"name": ".gitignore"
 			},
 			{
-				"name": "driver",
 				"parentLogicPath": "tool/uploader",
-				"type": "folder"
+				"type": "folder",
+				"name": "driver"
+			},
+			{
+				"name": "readme.md",
+				"parentLogicPath": "",
+				"type": "file"
 			}
 		],
 		"projectName": "ch32",
