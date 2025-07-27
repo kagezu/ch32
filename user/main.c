@@ -2,14 +2,14 @@
 
 void GPIO_Toggle_INIT(void);
 
-#define MAX_STEP_MS 2000
+#define MAX_STEP_MS 5000
 #define ONE_STEP_MS 1
 #define ONE_STEP_US 1000
 
 #define LIGHT_IDLE_MS 10
 
 int main(void) {
-  Delay_Init();
+  delay_init();
   GPIO_Toggle_INIT();
   u32 i = 0;
 
@@ -17,17 +17,17 @@ int main(void) {
     if (!(GPIOA->INDR & GPIO_Pin_0)) {
       if (i < LIGHT_IDLE_MS) GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_SET);
       else GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_RESET);
-      Delay_Ms(ONE_STEP_MS);
+      delay_ms(ONE_STEP_MS);
     } else {
       u32 k = i > MAX_STEP_MS >> 1 ? MAX_STEP_MS - i : i;
       k = (k << 1) * ONE_STEP_US / MAX_STEP_MS;
       k = k * k / ONE_STEP_US;
 
       GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_SET);
-      Delay_Us(k);
+      delay_us(k);
 
       GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_RESET);
-      Delay_Us(ONE_STEP_US - k);
+      delay_us(ONE_STEP_US - k);
     }
 
     i++;
