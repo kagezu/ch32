@@ -27,11 +27,6 @@
 				"name": ".gitignore"
 			},
 			{
-				"parentLogicPath": "tool/uploader",
-				"type": "folder",
-				"name": "driver"
-			},
-			{
 				"parentLogicPath": "",
 				"type": "file",
 				"name": "readme.md"
@@ -58,7 +53,18 @@
 				"post_script_description": "",
 				"excludeResources": [
 					"${project}/Startup/startup_ch32v20x_D8W.S",
-					"${project}/Startup/startup_ch32v20x_D8.S"
+					"${project}/Startup/startup_ch32v20x_D8.S",
+					"${project}/tool",
+					"${project}/lib/display/widget",
+					"${project}/lib/display/ILI9225",
+					"${project}/lib/display/ILI9225_SOFT",
+					"${project}/lib/display/ILI9486_16",
+					"${project}/lib/display/ILI9486_8",
+					"${project}/lib/display/NT35510",
+					"${project}/lib/display/SSD1306",
+					"${project}/lib/display/ST7735",
+					"${project}/lib/display/ST7789",
+					"${project}/lib/display/template"
 				],
 				"optimization": {
 					"level": "size",
@@ -143,13 +149,15 @@
 							"${project}/core/riscv",
 							"${project}/Peripheral/inc",
 							"${project}/core/system",
-							"${project}/core"
+							"${project}/core",
+							"${project}/lib/display",
+							"${project}/lib/print"
 						],
 						"include_system_paths": [],
 						"include_files": []
 					},
 					"optimization": {
-						"language_standard": "gnu99",
+						"language_standard": "gnu17",
 						"other_optimization_flags": ""
 					},
 					"warnings": {
@@ -174,12 +182,19 @@
 						"undefined_symbols": []
 					},
 					"includes": {
-						"include_paths": [],
+						"include_paths": [
+							"${project}/core/riscv",
+							"${project}/Peripheral/inc",
+							"${project}/core/system",
+							"${project}/core",
+							"${project}/lib/display",
+							"${project}/lib/print"
+						],
 						"include_system_paths": [],
 						"include_files": []
 					},
 					"optimization": {
-						"cpp_language_standard": "gnucpp11",
+						"cpp_language_standard": "cpp2a",
 						"abi_version": "0",
 						"do_not_use_exceptions": false,
 						"do_not_use_rtti": false,
@@ -195,7 +210,7 @@
 						"warn_on_uncast_null": false,
 						"warn_on_sign_promotion": false,
 						"warn_about_effictive_cpp_violcations": false,
-						"other_warning_flags": ""
+						"other_warning_flags": "-Wno-volatile"
 					},
 					"miscellaneous": {
 						"generate_assembler_listing": false,
@@ -310,7 +325,7 @@
 					"atomic_extension": true,
 					"floating_point": "none",
 					"compressed_extension": true,
-					"extra_compressed_extension": true,
+					"extra_compressed_extension": false,
 					"bit_extension": false,
 					"multiplication_subset_of_the_M_extension": false,
 					"integer_ABI": "ilp32",
@@ -322,7 +337,7 @@
 					"save_restore": true,
 					"other_target_flags": ""
 				},
-				"component_toolchain": "${WCH:Toolchain:GCC8}",
+				"component_toolchain": "${WCH:Toolchain:GCC12}",
 				"name": "obj",
 				"configVariables": []
 			}
@@ -362,13 +377,12 @@
 			"enableNoZeroWaitingAreaFlash": false
 		},
 		"gdbCfg": {
-			"executable": "${WCH:Toolchain:GCC8}",
+			"executable": "${WCH:Toolchain:GCC12}",
 			"options": [],
 			"commands": [
 				"set mem inaccessible-by-default off",
 				"set architecture riscv:rv32",
-				"set remotetimeout unlimited",
-				"set disassembler-options xw"
+				"set remotetimeout unlimited"
 			]
 		},
 		"startup": {

@@ -1,5 +1,25 @@
 #include "core.h"
+#include "lcd.h"
 
+
+int main(void) {
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+
+  LCD lcd;
+
+  lcd.init();
+  lcd.font(sans_24, 0, 0);
+  // lcd.font(serif_18i, 0, 0);
+  lcd.background(MidnightBlue);
+
+  int x = 0;
+  while (true)
+    lcd.demo(x++);
+}
+
+
+/*
 void GPIO_Toggle_INIT(void);
 
 #define MAX_STEP_MS 5000
@@ -48,4 +68,7 @@ void GPIO_Toggle_INIT(void) {
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  // GPIOA->CFGLR = 0b00;
 }
+*/

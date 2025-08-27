@@ -2,6 +2,10 @@
 #include "ch32v20x.h"
 
 
+#ifdef __cplusplus
+ extern "C" {
+#endif 
+
 #define STK_SWIE  (1 << 31)  //
 #define STK_INIT  (1 << 5)   // обновлять счётчик при старте
 #define STK_MODE  (1 << 4)   // 0 = UP  1 = DOWN
@@ -17,3 +21,7 @@
 void delay_init(void);
 void delay_us(uint32_t n);
 void delay_ms(uint32_t n);
+
+#ifdef __cplusplus
+}
+#endif
