@@ -57,13 +57,10 @@
 					"${project}/tools",
 					"${project}/lib/display/widget",
 					"${project}/lib/display/ILI9225",
-					"${project}/lib/display/ILI9225_SOFT",
-					"${project}/lib/display/ILI9486_16",
 					"${project}/lib/display/ILI9486_8",
 					"${project}/lib/display/NT35510",
 					"${project}/lib/display/SSD1306",
 					"${project}/lib/display/ST7735",
-					"${project}/lib/display/ST7789",
 					"${project}/lib/display/template",
 					"${project}/exemple"
 				],
@@ -147,7 +144,6 @@
 					},
 					"includes": {
 						"include_paths": [
-							"${project}/core/riscv",
 							"${project}/Peripheral/inc",
 							"${project}/core/system",
 							"${project}/core",
@@ -184,7 +180,6 @@
 					},
 					"includes": {
 						"include_paths": [
-							"${project}/core/riscv",
 							"${project}/Peripheral/inc",
 							"${project}/core/system",
 							"${project}/core",
