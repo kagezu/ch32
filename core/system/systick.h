@@ -17,6 +17,12 @@
 #define STK_CTRL  SysTick->CTLR
 #define STK_CMP   SysTick->CMP
 #define STK_SR    SysTick->SR
+#define STK_CNT   SysTick->CNT
+
+#define STK_E     SysTick->CTLR = STK_STE | STK_STCLK; SysTick->SR = 0
+#define STK_D     SysTick->CTLR = 0; SysTick->SR = 0
+#define STK_C     SysTick->CTLR = STK_INIT | STK_STCLK | STK_STE
+
 
 void delay_init(void);
 void delay_us(uint32_t n);

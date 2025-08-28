@@ -247,6 +247,18 @@ handle_reset:
 	csrw mtvec, t0
 
     jal  SystemInit
+
+    # Инициализация статических конструкторов
+    la  s1, __init_array_start
+    la  s2, __init_array_end
+.loop:
+    beq     s1, s2, .next
+    lw      a0, 0(s1)
+    addi    s1, s1, 4
+    jalr    a0
+    j       .loop
+.next:
+
 	la t0, main
 	csrw mepc, t0
 	mret

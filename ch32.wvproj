@@ -64,7 +64,8 @@
 					"${project}/lib/display/SSD1306",
 					"${project}/lib/display/ST7735",
 					"${project}/lib/display/ST7789",
-					"${project}/lib/display/template"
+					"${project}/lib/display/template",
+					"${project}/exemple"
 				],
 				"optimization": {
 					"level": "size",

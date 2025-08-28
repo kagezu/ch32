@@ -121,6 +121,7 @@ void SystemInit (void)
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 
   SetSysClock();
+
 }
 
 

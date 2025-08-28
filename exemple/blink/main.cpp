@@ -1,30 +1,5 @@
 #include "core.h"
-#include "lcd.h"
 
-
-int main(void) {
-
-  LCD lcd;
-
-  lcd.init();
-  // lcd.font(sans_24, 0, 0);
-  lcd.font(serif_18i, 0, 0);
-  lcd.color(White);
-  lcd.background(MidnightBlue);
-
-  int x = 0;
-  while (true) {
-    lcd.demo(x++);
-
-    lcd.at(0, lcd.max_y() - 2 * lcd.get_height() + 1);
-    lcd.printf(
-      "FCLK: %u MHz\n%u X %u X %u", SystemCoreClock / 1000000,
-      lcd.max_x() + 1, lcd.max_y() + 1, RGB::len());
-  }
-}
-
-
-/*
 void GPIO_Toggle_INIT(void);
 
 #define MAX_STEP_MS 5000
@@ -34,7 +9,6 @@ void GPIO_Toggle_INIT(void);
 #define LIGHT_IDLE_MS 10
 
 int main(void) {
-  delay_init();
   GPIO_Toggle_INIT();
   u32 i = 0;
 
@@ -76,4 +50,3 @@ void GPIO_Toggle_INIT(void) {
 
   // GPIOA->CFGLR = 0b00;
 }
-*/
