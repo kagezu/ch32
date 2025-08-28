@@ -16,7 +16,7 @@ sudo ./install
 
  5. Добавить (если проект новый) в post-build команду:
 ```bach
- ${project}/tool/uploader/upload.sh ${project}
+ ${project}/tools/uploader/upload.sh ${project}
  ```
 
 ## Загрузка

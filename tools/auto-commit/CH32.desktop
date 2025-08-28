@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=CH32
+Comment=Отправить коммит
+Exec=/home/hinto/project/ch32/tools/auto-commit/commit.sh /home/hinto/project/ch32
+Icon=web-github
+Path=
+Terminal=true
+StartupNotify=true

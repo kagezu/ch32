@@ -18,20 +18,20 @@
 * reset the HSI is used as SYSCLK source).
 * If none of the define below is enabled, the HSI is used as System clock source. 
 */
-#define SYSCLK_FREQ_HSE    HSE_VALUE
+// #define SYSCLK_FREQ_HSE    HSE_VALUE
 // #define SYSCLK_FREQ_48MHz_HSE  48000000
 //#define SYSCLK_FREQ_56MHz_HSE  56000000
 //#define SYSCLK_FREQ_72MHz_HSE  72000000
 // #define SYSCLK_FREQ_96MHz_HSE  96000000
 //#define SYSCLK_FREQ_120MHz_HSE  120000000
-//#define SYSCLK_FREQ_144MHz_HSE  144000000
+#define SYSCLK_FREQ_144MHz_HSE  144000000
 // #define SYSCLK_FREQ_HSI    HSI_VALUE
 // #define SYSCLK_FREQ_48MHz_HSI  48000000
 //#define SYSCLK_FREQ_56MHz_HSI  56000000
 //#define SYSCLK_FREQ_72MHz_HSI  72000000
 //#define SYSCLK_FREQ_96MHz_HSI  96000000
 //#define SYSCLK_FREQ_120MHz_HSI  120000000
-//#define SYSCLK_FREQ_144MHz_HSI  144000000
+// #define SYSCLK_FREQ_144MHz_HSI  144000000
 
 /* Clock Definitions */
 #ifdef SYSCLK_FREQ_HSE
@@ -110,12 +110,16 @@ static void SetSysClockTo144_HSI( void );
  */
 void SystemInit (void)
 {
-  RCC->CTLR |= (uint32_t)0x00000001;
-  RCC->CFGR0 &= (uint32_t)0xF0FF0000;
-  RCC->CTLR &= (uint32_t)0xFEF6FFFF;
-  RCC->CTLR &= (uint32_t)0xFFFBFFFF;
-  RCC->CFGR0 &= (uint32_t)0xFF00FFFF;
-  RCC->INTR = 0x009F0000;    
+  RCC->CTLR |= (uint32_t)0x00000001;      // Включить генератор HSI
+  RCC->CFGR0 &= (uint32_t)0xF0FF0000;     // Сбросить делители, выбрать HSI
+  RCC->CTLR &= (uint32_t)0xFEF6FFFF;      // Сбросить PLL, принудительно отключить HSE
+  RCC->CTLR &= (uint32_t)0xFFFBFFFF;      // Сбросить обход HSE
+  RCC->CFGR0 &= (uint32_t)0xFF00FFFF;     // Cбросить делители/мультиплекаторы PLL
+  RCC->INTR = 0x009F0000;                 // Сбросить прерывания и флаги готовности генераторов тактовой частоты
+
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+
   SetSysClock();
 }
 

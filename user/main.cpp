@@ -3,19 +3,24 @@
 
 
 int main(void) {
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 
   LCD lcd;
 
   lcd.init();
-  lcd.font(sans_24, 0, 0);
-  // lcd.font(serif_18i, 0, 0);
+  // lcd.font(sans_24, 0, 0);
+  lcd.font(serif_18i, 0, 0);
+  lcd.color(White);
   lcd.background(MidnightBlue);
 
   int x = 0;
-  while (true)
+  while (true) {
     lcd.demo(x++);
+
+    lcd.at(0, lcd.max_y() - 2 * lcd.get_height() + 1);
+    lcd.printf(
+      "FCLK: %u MHz\n%u X %u X %u", SystemCoreClock / 1000000,
+      lcd.max_x() + 1, lcd.max_y() + 1, RGB::len());
+  }
 }
 
 
