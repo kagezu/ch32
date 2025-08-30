@@ -12,9 +12,12 @@ void GPIO_Init_Pin(GPIO_TypeDef *GPIOx, GPIOMode_TypeDef GPIO_Mode, uint8_t pin)
 #define P_GND(port, pin) GPIO_Init_Pin(GPIO##port, GPIO_Mode_IPD, pin)
 
 
-#define PORT(port, pin) GPIO##port
+#define PORT(port, pin)  GPIO##port
 
 #define GPIO(port, pin)
+#define TIMER(port, pin)  GPIO_Init_Pin(GPIO##port, GPIO_Mode_AF_PP, pin)
+
+
 // #define SERIAL(port, pin)   PAD_CONFIG->PORT_ ## port ## _CFG |= (0b01 << ( pin << 1))
 // #define TIMER(port, pin)    PAD_CONFIG->PORT_ ## port ## _CFG |= (0b10 << ( pin << 1))
 // #define ANALOG(port, pin)   PAD_CONFIG->PORT_ ## port ## _CFG |= (0b11 << ( pin << 1))

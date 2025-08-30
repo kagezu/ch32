@@ -184,7 +184,9 @@
 							"${project}/core/system",
 							"${project}/core",
 							"${project}/lib/display",
-							"${project}/lib/print"
+							"${project}/lib/print",
+							"${project}/lib/menu",
+							"${project}/lib/math"
 						],
 						"include_system_paths": [],
 						"include_files": []

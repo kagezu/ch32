@@ -1,6 +1,4 @@
 #pragma once
-#include "ch32v20x.h"
-
 
 #ifdef __cplusplus
  extern "C" {
@@ -24,9 +22,6 @@
 #define STK_C     SysTick->CTLR = STK_INIT | STK_STCLK | STK_STE
 
 
-void delay_init(void);
-void delay_us(uint32_t n);
-void delay_ms(uint32_t n);
 
 #ifdef __cplusplus
 }
