@@ -265,7 +265,7 @@
             </toolChain>
           </folderInfo>
           <sourceEntries>
-            <entry excluding="Startup/startup_ch32v20x_D8W.S|Startup/startup_ch32v20x_D8.S|tools|lib/display/widget|lib/display/ILI9225|lib/display/ILI9486_8|lib/display/NT35510|lib/display/SSD1306|lib/display/ST7735|lib/display/template|exemple" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+            <entry excluding="Startup/startup_ch32v20x_D8W.S|Startup/startup_ch32v20x_D8.S|tools|lib/display/widget|lib/display/ILI9225|lib/display/ILI9486_8|lib/display/SSD1306|lib/display/ST7735|lib/display/template|exemple" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
           </sourceEntries>
         </configuration>
       </storageModule>

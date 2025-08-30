@@ -120,13 +120,13 @@ loop:
 
     // Стираем устаревший объект с экрана
     lcd.color(Black);
-    // lcd.fill((int)Xold - RADIUS, (int)Yold - RADIUS, (int)Xold + RADIUS, (int)Yold + RADIUS);
+    // lcd.fill((int)Xold - RADIUS , (int)Yold - RADIUS , (int)Xold + RADIUS , (int)Yold + RADIUS );
     lcd.circle_fill(Xold, Yold, RADIUS);
     // lcd.circle(Xold, Yold, RADIUS);
 
     // Отображаем объект в новом месте
     lcd.color(colors[i]);
-    // lcd.fill((int)X0- RADIUS+1, (int)Y0 - RADIUS+1, (int)X0 + RADIUS-1, (int)Y0 + RADIUS-1);
+    // lcd.fill((int)X0 - RADIUS + 1, (int)Y0 - RADIUS + 1, (int)X0 + RADIUS - 1, (int)Y0 + RADIUS - 1);
     lcd.circle_fill(X0, Y0, RADIUS);
     // lcd.circle(X0, Y0, RADIUS);
   }
