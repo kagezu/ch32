@@ -5,6 +5,8 @@
 
 LCD lcd;
 
+int mode = 1;
+
 int main(void) {
   USER_B(P_GND);
 
@@ -18,19 +20,35 @@ int main(void) {
 
   int x = 0;
   while (true) {
-    STK_C;
     if (USER_B(GET)) {
-      lcd.background(color[x++ & 0x7F]);
-      lcd.clear();
-    } else {
-      lcd.demo(x++);
+      while (USER_B(GET));
+      mode++;
+    }
+    STK_C;
+
+    switch (mode) {
+      case 0:
+        lcd.background(color[x++ & 0x7F]);
+        lcd.clear();
+        break;
+      case 1: lcd.demo(x++); break;
+      case 2: lcd.demo2(x++); break;
+      case 3: //lcd.demo3(x++); break;
+      case 4: lcd.demo4(x++); break;
+
+      default: mode = 0;
     }
 
-    u32 fps = (SystemCoreClock << 4) / STK_CNT;
+    // uint32_t fps = (SystemCoreClock) / STK_CNT;
+    uint32_t fps = STK_CNT;
     lcd.at(0, lcd.max_y() - 2 * lcd.get_height() + 1);
+    lcd.color(White);
     lcd.background(MidnightBlue);
+    // lcd.printf(
+    //   "FPS: %.2.4q\n%u X %u X %u", fps,
+    //   lcd.max_x() + 1, lcd.max_y() + 1, RGB::len());
     lcd.printf(
-      "FPS: %.2.4q\n%u X %u X %u", fps,
+      "FPS: %lu\n%u X %u X %u", fps,
       lcd.max_x() + 1, lcd.max_y() + 1, RGB::len());
   }
 }

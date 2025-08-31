@@ -2,8 +2,15 @@
 #include "lcd.h"
 
 #define USER_B(f) f(A, 0)
-
 LCD lcd;
+
+ATTR_INLINE void test1(uint32_t arg) {
+  delay_us(arg);
+}
+
+ATTR_INLINE void test2(uint32_t arg) {
+  delay_ms(arg);
+}
 
 int main(void) {
   STK_E;
@@ -16,37 +23,24 @@ int main(void) {
   lcd.background(MidnightBlue);
   lcd.clear();
 
-  lcd.printf("\f \n");
+  lcd.printf("\f");
   lcd.printf("F_CPU: %u MHz \n", SystemCoreClock / 1000000);
 
-  STK_C;
-  uint32_t tick = STK_CNT;
-  lcd.printf("init: %u tick \n", tick);
+  lcd.printf("\n   Test 1: \n\n");
+  for (uint32_t arg = 0; arg < 5; arg++) {
+    STK_C;
+    test1(arg);
+    uint32_t tick = STK_CNT;
+    lcd.printf("Arg: %lu \t Time: %lu tick \n", arg, tick);
+  }
 
-  STK_C;
-  delay_us(0);
-  tick = STK_CNT;
-  lcd.printf("delay_us(0): %lu tick \n", tick);
-
-  STK_C;
-  delay_us(1);
-  tick = STK_CNT;
-  lcd.printf("delay_us(1): %lu tick \n", tick);
-
-  STK_C;
-  delay_us(2);
-  tick = STK_CNT;
-  lcd.printf("delay_us(2): %lu tick \n", tick);
-
-  STK_C;
-  delay_us(1000);
-  tick = STK_CNT;
-  lcd.printf("delay_us(1000): %lu tick \n", tick);
-
-  STK_C;
-  delay_us(1000000);
-  tick = STK_CNT;
-  lcd.printf("delay_ms(1000000): %lu tick \n", tick);
+  lcd.printf("\n   Test 2: \n\n");
+  for (uint32_t arg = 0; arg < 5; arg++) {
+    STK_C;
+    test2(arg);
+    uint32_t tick = STK_CNT;
+    lcd.printf("Arg: %lu \t Time: %lu tick \n", arg, tick);
+  }
 
   while (1);
 }
