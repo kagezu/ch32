@@ -103,15 +103,15 @@ static void SetSysClockTo144_HSI(void);
 
 void SystemError(uint32_t div) {
   GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_10MHz;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   while (1) {
-    GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_SET);
+    GPIOB->BSHR = GPIO_Pin_2;
     for (volatile uint32_t t = 0; t < (SystemCoreClock >> div); t++);
-    GPIO_WriteBit(GPIOB, GPIO_Pin_2, Bit_RESET);
+    GPIOB->BCR = GPIO_Pin_2;
     for (volatile uint32_t t = 0; t < (SystemCoreClock >> div); t++);
   }
 }

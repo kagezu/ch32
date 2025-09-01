@@ -28,33 +28,33 @@
 // #define SYSCLK_FREQ_144MHz_HSI  144000000
 
 #ifdef SYSCLK_FREQ_HSE
-#define F_CPU SYSCLK_FREQ_HSE
+#define F_CPU ((uint32_t)SYSCLK_FREQ_HSE)
 #elif defined SYSCLK_FREQ_48MHz_HSE
-#define F_CPU SYSCLK_FREQ_48MHz_HSE
+#define F_CPU ((uint32_t)SYSCLK_FREQ_48MHz_HSE)
 #elif defined SYSCLK_FREQ_56MHz_HSE
-#define F_CPU SYSCLK_FREQ_56MHz_HSE
+#define F_CPU ((uint32_t)SYSCLK_FREQ_56MHz_HSE)
 #elif defined SYSCLK_FREQ_72MHz_HSE
-#define F_CPU SYSCLK_FREQ_72MHz_HSE
+#define F_CPU ((uint32_t)SYSCLK_FREQ_72MHz_HSE)
 #elif defined SYSCLK_FREQ_96MHz_HSE
-#define F_CPU SYSCLK_FREQ_96MHz_HSE
+#define F_CPU ((uint32_t)SYSCLK_FREQ_96MHz_HSE)
 #elif defined SYSCLK_FREQ_120MHz_HSE
-#define F_CPU SYSCLK_FREQ_120MHz_HSE
+#define F_CPU ((uint32_t)SYSCLK_FREQ_120MHz_HSE)
 #elif defined SYSCLK_FREQ_144MHz_HSE
-#define F_CPU SYSCLK_FREQ_144MHz_HSE
+#define F_CPU ((uint32_t)SYSCLK_FREQ_144MHz_HSE)
 #elif defined SYSCLK_FREQ_48MHz_HSI
-#define F_CPU SYSCLK_FREQ_48MHz_HSI
+#define F_CPU ((uint32_t)SYSCLK_FREQ_48MHz_HSI)
 #elif defined SYSCLK_FREQ_56MHz_HSI
-#define F_CPU SYSCLK_FREQ_56MHz_HSI
+#define F_CPU ((uint32_t)SYSCLK_FREQ_56MHz_HSI)
 #elif defined SYSCLK_FREQ_72MHz_HSI
-#define F_CPU SYSCLK_FREQ_72MHz_HSI
+#define F_CPU ((uint32_t)SYSCLK_FREQ_72MHz_HSI)
 #elif defined SYSCLK_FREQ_96MHz_HSI
-#define F_CPU SYSCLK_FREQ_96MHz_HSI
+#define F_CPU ((uint32_t)SYSCLK_FREQ_96MHz_HSI)
 #elif defined SYSCLK_FREQ_120MHz_HSI
-#define F_CPU SYSCLK_FREQ_120MHz_HSI
+#define F_CPU ((uint32_t)SYSCLK_FREQ_120MHz_HSI)
 #elif defined SYSCLK_FREQ_144MHz_HSI
-#define F_CPU SYSCLK_FREQ_144MHz_HSI
+#define F_CPU ((uint32_t)SYSCLK_FREQ_144MHz_HSI)
 #else
-#define F_CPU HSI_VALUE
+#define F_CPU ((uint32_t)HSI_VALUE)
 #endif
 
 #ifdef __cplusplus

@@ -1,10 +1,11 @@
 #pragma once
 
 #include "ch32v20x.h"
-#include "gpio.h"
+#include "system_ch32v20x.h"
 #include "attribute.h"
 #include "systick.h"
-#include "system_ch32v20x.h"
+#include "gpio.h"
+#include "pinout.h"
 
 
 #define P(x)  x
