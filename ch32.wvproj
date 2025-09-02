@@ -55,12 +55,8 @@
 					"${project}/Startup/startup_ch32v20x_D8W.S",
 					"${project}/Startup/startup_ch32v20x_D8.S",
 					"${project}/tools",
-					"${project}/lib/display/widget",
-					"${project}/lib/display/ILI9486_8",
-					"${project}/lib/display/SSD1306",
-					"${project}/lib/display/ST7735",
-					"${project}/lib/display/template",
-					"${project}/exemple"
+					"${project}/exemple",
+					"${project}/lib/display/SSD1306"
 				],
 				"optimization": {
 					"level": "more",
@@ -344,7 +340,7 @@
 		"address": "0x08000000",
 		"target_path": "obj/ch32.hex",
 		"clkSpeed": "High",
-		"debug_interface_mode": "",
+		"debug_interface_mode": "1-wire serial",
 		"erase": true,
 		"program": true,
 		"verify": true,
