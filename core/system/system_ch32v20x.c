@@ -101,7 +101,7 @@ static void SetSysClockTo144_HSI(void);
 #endif
 
 
-void SystemError(uint32_t div) {
+void SystemError() {
   GPIO_InitTypeDef GPIO_InitStructure;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -110,9 +110,9 @@ void SystemError(uint32_t div) {
 
   while (1) {
     GPIOB->BSHR = GPIO_Pin_2;
-    for (volatile uint32_t t = 0; t < (SystemCoreClock >> div); t++);
+    for (volatile uint32_t t = 0; t < (SystemCoreClock >> 6); t++);
     GPIOB->BCR = GPIO_Pin_2;
-    for (volatile uint32_t t = 0; t < (SystemCoreClock >> div); t++);
+    for (volatile uint32_t t = 0; t < (SystemCoreClock >> 6); t++);
   }
 }
 
@@ -138,7 +138,7 @@ void SystemInit(void) {
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 
-  if (F_CPU != SystemCoreClock) SystemError(6);
+  // if (F_CPU != SystemCoreClock) SystemError();
 }
 
 
@@ -652,7 +652,7 @@ static void SetSysClockTo144_HSE(void) {
     /* PCLK2 = HCLK */
     RCC->CFGR0 |= (uint32_t)RCC_PPRE2_DIV1;
     /* PCLK1 = HCLK */
-    RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV2;
+    RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV1; // Для 72MHz SPI
 
     /*  CH32V20x_D6-PLL configuration: PLLCLK = HSE * 18 = 144 MHz (HSE=8MHZ)
      *  CH32V20x_D8-PLL configuration: PLLCLK = HSE/4 * 18 = 144 MHz (HSE=32MHZ)

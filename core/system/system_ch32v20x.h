@@ -66,7 +66,7 @@ extern uint32_t SystemCoreClock;
 /* System_Exported_Functions */
 extern void SystemInit(void);
 extern void SystemCoreClockUpdate(void);
-extern void SystemError(uint32_t div);
+extern void SystemError();
 
 #ifdef __cplusplus
 }

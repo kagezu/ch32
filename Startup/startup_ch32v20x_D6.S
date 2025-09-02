@@ -142,6 +142,7 @@ _vector_base:
     .weak   USBFSWakeUp_IRQHandler     /* USBFS Wake Up */
     .weak   UART4_IRQHandler           /* UART4 */
     .weak   DMA1_Channel8_IRQHandler   /* DMA1 Channel8 */
+    .weak   SystemError
 
 NMI_Handler:
 HardFault_Handler:
@@ -197,7 +198,9 @@ USBFS_IRQHandler:
 USBFSWakeUp_IRQHandler:
 UART4_IRQHandler:
 DMA1_Channel8_IRQHandler:
+SystemError:
 1:
+    jal SystemError
 	j 1b
 
 	.section	.text.handle_reset,"ax",@progbits
@@ -239,7 +242,7 @@ handle_reset:
 	li t0, 0x3
 	csrw 0x804, t0
 /* Включить глобальное прерывание и настроить привилегированный режим */
-   	li t0, 0x88           
+   	li t0, 0x88
    	csrw mstatus, t0
 /* Режим распознавания таблицы векторов прерываний и режим адреса входа */
  	la t0, _vector_base
