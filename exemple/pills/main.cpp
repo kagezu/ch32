@@ -5,8 +5,8 @@
 #define BOTTOM 30
 
 #define RADIUS 12
-#define COUNT  12
-#define PRECIS 10
+#define COUNT  50
+#define PRECIS 3
 
 #define X      0
 #define Y      1

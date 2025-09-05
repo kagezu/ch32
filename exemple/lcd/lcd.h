@@ -4,17 +4,17 @@
 // Цветовая модель
 
 // #define RGB         RGB12   // 4x4x4 bit
-#define RGB         RGB16   // 5x6x5 bit
+// #define RGB         RGB16   // 5x6x5 bit
 // #define RGB         RGB18   // 6x6x6 bit
-// #define RGB         RGB24   // 8x8x8 bit
+#define RGB         RGB24   // 8x8x8 bit
 
 
 // Поворот дисплея
 
 // #define LCD_ROT     R_0
-#define LCD_ROT     R_90
+// #define LCD_ROT     R_90
 // #define LCD_ROT     R_180
-// #define LCD_ROT     R_270
+#define LCD_ROT     R_270
 // #define LCD_ROT     R_X
 // #define LCD_ROT     R_Y
 // #define LCD_ROT     R_EX
