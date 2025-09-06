@@ -652,7 +652,7 @@ static void SetSysClockTo144_HSE(void) {
     /* PCLK2 = HCLK */
     RCC->CFGR0 |= (uint32_t)RCC_PPRE2_DIV1;
     /* PCLK1 = HCLK */
-    RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV2; // Для 72MHz SPI
+    RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV2; // Для 36MHz SPI
     // RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV1; // Для 72MHz SPI
 
     /*  CH32V20x_D6-PLL configuration: PLLCLK = HSE * 18 = 144 MHz (HSE=8MHZ)
