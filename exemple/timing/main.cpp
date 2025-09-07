@@ -1,5 +1,6 @@
 #include "core.h"
 #include "lcd.h"
+#include "adc.h"
 
 #define EN_A(f)    f(A, 0)
 #define EN_B(f)    f(A, 1)

@@ -4,14 +4,14 @@
 
 // ADC
 
-// #define ADC0(f)         f(1, 5)
-// #define ADC1(f)         f(1, 7)
-// #define ADC2(f)         f(0, 2)
-// #define ADC3(f)         f(0, 4)
-// #define ADC4(f)         f(0, 7)
-// #define ADC5(f)         f(0, 9)
-// #define ADC6(f)         f(0, 11)
-// #define ADC7(f)         f(0, 13)
+#define ADC_IN0(f)         f(A, 0)
+#define ADC_IN1(f)         f(A, 1)
+#define ADC_IN2(f)         f(A, 2)
+#define ADC_IN3(f)         f(A, 3)
+#define ADC_IN4(f)         f(A, 4)
+#define ADC_IN5(f)         f(A, 5)
+#define ADC_IN6(f)         f(A, 6)
+#define ADC_IN7(f)         f(A, 7)
 
 // DAC
 
