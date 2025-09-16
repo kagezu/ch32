@@ -72,30 +72,30 @@ public:
   void slave() { config &= ~SPI_CTLR1_MSTR; }
 
   // Ждать TX
-  ATTR_INLINE static void wait() { while (!(SPIx->STATR & SPI_STATR_TXE)); }
-  ATTR_INLINE static void wait_thr() { while (!(SPIx->STATR & SPI_STATR_TXE)); }
-  ATTR_INLINE static void wait_full() { while (!(SPIx->STATR & SPI_STATR_TXE)); }
+  INLINE static void wait() { while (!(SPIx->STATR & SPI_STATR_TXE)); }
+  INLINE static void wait_thr() { while (!(SPIx->STATR & SPI_STATR_TXE)); }
+  INLINE static void wait_full() { while (!(SPIx->STATR & SPI_STATR_TXE)); }
 
   // Ждать завершение пердачи
-  ATTR_INLINE static void wait_idle() { while (SPIx->STATR & SPI_STATR_BSY); }
+  INLINE static void wait_idle() { while (SPIx->STATR & SPI_STATR_BSY); }
 
-  ATTR_INLINE static void send(uint8_t data) {
+  INLINE static void send(uint8_t data) {
     wait_thr();
     SPIx->DATAR = data;
   }
 
-  ATTR_INLINE static void send16(uint16_t data) {
+  INLINE static void send16(uint16_t data) {
     wait_thr();
     SPIx->DATAR = data;
   }
 
-  ATTR_INLINE void begin() {
+  INLINE void begin() {
     SPIx->CTLR1 &= ~SPI_CTLR1_SPE;
     SPIx->CTLR1 = config | SPI_CTLR1_SPE;
     SPIx->CTLR1 |= SPI_CTLR1_SPE | SPI_CTLR1_MSTR;
   }
 
-  ATTR_INLINE static void end() {
+  INLINE static void end() {
     wait_idle();
     SPIx->CTLR1 &= ~SPI_CTLR1_SPE;
   }

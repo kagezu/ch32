@@ -8,11 +8,11 @@
 
 LCD lcd;
 
-ATTR_INLINE void test1(uint32_t arg) {
+INLINE void test1(uint32_t arg) {
   delay_us(arg);
 }
 
-ATTR_INLINE void test2(uint32_t arg) {
+INLINE void test2(uint32_t arg) {
   delay_ms(arg);
 }
 

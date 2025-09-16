@@ -32,7 +32,7 @@ public:
 
 public:
   // template<const int ch>
-  ATTR_INLINE static void init(const int ch) {
+  INLINE static void init(const int ch) {
     switch (ch) {
       case 0: ADC_IN0(INA); break;
       case 1: ADC_IN1(INA); break;
@@ -84,19 +84,19 @@ public:
     return AdcSmpclk[smp(tick)];
   }
 
-  ATTR_INLINE static void delay(int time) {
+  INLINE static void delay(int time) {
     ADC1->SAMPTR2 = smp(time) << (ch1 * 3);
   }
 
-  ATTR_INLINE static void chanel(int ch) {
+  INLINE static void chanel(int ch) {
     ch1 = ch;
     ADC1->RSQR3 = ch;
     ADC2->RSQR3 = ch;
   }
 
-  ATTR_INLINE static void single() { ADC1->CTLR2 = ADC_ADON; }
-  ATTR_INLINE static void start() { ADC1->CTLR2 = ADC_CONT | ADC_ADON; }
-  ATTR_INLINE static void stop() { ADC1->CTLR2 = ADC_ADON; }  // Снять CONT
-  ATTR_INLINE static void wait() { while (!(ADC1->STATR & ADC_EOC)); }
-  ATTR_INLINE static uint32_t value() { return ADC1->RDATAR; }
+  INLINE static void single() { ADC1->CTLR2 = ADC_ADON; }
+  INLINE static void start() { ADC1->CTLR2 = ADC_CONT | ADC_ADON; }
+  INLINE static void stop() { ADC1->CTLR2 = ADC_ADON; }  // Снять CONT
+  INLINE static void wait() { while (!(ADC1->STATR & ADC_EOC)); }
+  INLINE static uint32_t value() { return ADC1->RDATAR; }
 };
