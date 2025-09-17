@@ -95,7 +95,7 @@ public:
   // Предварительно установить in_clk TOP OCR
   INLINE void pwm(uc16 config, uc32 ch) {
     using namespace TimerConfig;
-    T_16(N)->= TIM_UG;    // Инициализация теневых регистров
+    T_16(N)->SWEVGR = TIM_UG;    // Инициализация теневых регистров
     T_16(N)->DMAINTENR =  // Прерывания и DMA запросы
       (T_16(N)->DMAINTENR & ~(config & (INT | DMA))) |
       ((config & (INT | DMA)) << ch);

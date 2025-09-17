@@ -11,4 +11,4 @@ git commit -a -m "$com"
 git push -u old-origin master
 git push -u origin master
 git log --oneline --graph -16
-sleep 10
+sleep 100

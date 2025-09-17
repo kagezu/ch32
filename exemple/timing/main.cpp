@@ -2,9 +2,9 @@
 #include "lcd.h"
 #include "adc.h"
 
-#define EN_A(f)    f(A, 0)
-#define EN_B(f)    f(A, 1)
-#define USER_SW(f) f(A, 2)
+Pin<PA, 0> EN_A; 
+Pin<PA, 1> EN_B; 
+Pin<PA, 2> USER_SW; 
 
 LCD lcd;
 
@@ -31,9 +31,9 @@ void print2(uint32_t arg) {
 }
 
 void init_encoder() {
-  USER_SW(P_VCC);
-  EN_A(P_VCC);
-  EN_B(P_VCC);
+  USER_SW.in_vcc();
+  EN_A.in_vcc();
+  EN_B.in_vcc();
 
   RCC->APB1PCENR |= RCC_TIM2EN;
 
@@ -72,13 +72,13 @@ int main(void) {
   // lcd.printf("\n   Test 2: \n\n");
   // for (uint32_t arg = 0; arg < 5; arg++) print2(arg);
 
-  Rect rect(200, 200, 400, 400);
+  Rect rect(50, 100, 450, 400);
 
   while (1) {
     uint16_t count = -TIM2->CNT;
     lcd.printf("\f\nCount: %.2.2q      \n", count);
     lcd.printf("Count: %u         \n", count);
-    lcd.printf("  %u      ", USER_SW(GET));
+    lcd.printf("  %u      ", USER_SW.get());
     lcd.demo4(&rect, count);
   }
 }
