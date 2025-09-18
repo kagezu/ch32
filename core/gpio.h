@@ -75,7 +75,7 @@ class Port {
 public:
   INLINE u32 get() { return ((GPIO_TypeDef *)GPIOx)->INDR; }
   INLINE void out(u32 data) { ((GPIO_TypeDef *)GPIOx)->OUTDR = data; }
-  INLINE void init(u32 conf = GPIO_Output_PP | GPIO_2MHz) {
+  INLINE void init(uc32 conf = GPIO_Output_PP | GPIO_2MHz) {
     for (u32 pin = 0; pin < 8; pin++){
       if (((u32)0x001 << pin) & PINS)
         ((GPIO_TypeDef *)GPIOx)->CFGLR =
@@ -90,32 +90,3 @@ public:
     }
   }
 };
-
-/*
-INLINE void in_analog() {
-  if (PINx < 8) ((GPIO_TypeDef *)GPIOx)->CFGLR &= ~(((u32)0x0F) << (PINx << 2));
-  else ((GPIO_TypeDef *)GPIOx)->CFGHR &= ~(((u32)0x0F) << ((PINx - 8) << 2));
-}
-
-INLINE void in_nc() {
-  if (PINx < 8) ((GPIO_TypeDef *)GPIOx)->CFGLR = (((GPIO_TypeDef *)GPIOx)->CFGLR & ~(((u32)0x0F) << (PINx << 2))) | (GPIO_Imput_Float << (PINx << 2));
-  else ((GPIO_TypeDef *)GPIOx)->CFGHR = (((GPIO_TypeDef *)GPIOx)->CFGHR & ~(((u32)0x0F) << ((PINx - 8) << 2))) | (GPIO_Imput_Float << ((PINx - 8) << 2));
-}
-
-INLINE void in_gnd() {
-  ((GPIO_TypeDef *)GPIOx)->BCR = (((u32)0x01) << PINx);
-  if (PINx < 8) ((GPIO_TypeDef *)GPIOx)->CFGLR = (((GPIO_TypeDef *)GPIOx)->CFGLR & ~(((u32)0x0F) << (PINx << 2))) | (GPIO_Imput_PP_PD << (PINx << 2));
-  else ((GPIO_TypeDef *)GPIOx)->CFGHR = (((GPIO_TypeDef *)GPIOx)->CFGHR & ~(((u32)0x0F) << ((PINx - 8) << 2))) | (GPIO_Imput_PP_PD << ((PINx - 8) << 2));
-}
-
-INLINE void in_vcc() {
-  ((GPIO_TypeDef *)GPIOx)->BSHR = (((u32)0x01) << PINx);
-  if (PINx < 8) ((GPIO_TypeDef *)GPIOx)->CFGLR = (((GPIO_TypeDef *)GPIOx)->CFGLR & ~(((u32)0x0F) << (PINx << 2))) | (GPIO_Imput_PP_PD << (PINx << 2));
-  else ((GPIO_TypeDef *)GPIOx)->CFGHR = (((GPIO_TypeDef *)GPIOx)->CFGHR & ~(((u32)0x0F) << ((PINx - 8) << 2))) | (GPIO_Imput_PP_PD << ((PINx - 8) << 2));
-}
-
-INLINE void out(uc32 conf = GPIO_Speed_10MHz) {
-  if (PINx < 8) ((GPIO_TypeDef *)GPIOx)->CFGLR = (((GPIO_TypeDef *)GPIOx)->CFGLR & ~(((u32)0x0F) << (PINx << 2))) | (conf << (PINx << 2));
-  else ((GPIO_TypeDef *)GPIOx)->CFGHR = (((GPIO_TypeDef *)GPIOx)->CFGHR & ~(((u32)0x0F) << ((PINx - 8) << 2))) | (conf << ((PINx - 8) << 2));
-}
-  */
