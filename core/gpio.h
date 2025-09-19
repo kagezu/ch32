@@ -37,6 +37,31 @@ void GPIO_Init_Pin(GPIO_TypeDef *GPIOx, GPIOMode_TypeDef GPIO_Mode, uint8_t pin)
 #define GPIO_2MHz         ((uint32_t)0x02)
 #define GPIO_50MHz        ((uint32_t)0x03)
 
+
+constexpr u32 GPIO_Port   = 0x00;  // general IO
+constexpr u32 GPIO_Serial = 0x01;  // 1я функция
+constexpr u32 GPIO_Timer  = 0x02;  // 2я функция
+constexpr u32 GPIO_Analog = 0x03;  // 3я функция
+
+constexpr u32 GPIO_Float = 0x04;   // floating
+constexpr u32 GPIO_VCC   = 0x04;   // pull-up
+constexpr u32 GPIO_GND   = 0x08;   // pull-down
+constexpr u32 GPIO_Open  = 0x04;   // open-drain
+
+constexpr u32 GPIO_10MHz = 0x01;
+constexpr u32 GPIO_2MHz  = 0x02;
+constexpr u32 GPIO_50MHz = 0x03;
+
+// Для совместимости
+constexpr u32 GPIO_2mA = 0x03;
+constexpr u32 GPIO_4mA = 0x01;
+constexpr u32 GPIO_8mA = 0x02;
+constexpr u32 GPIO_max = 0x02;
+
+constexpr u32 GPIO_Input  = 0x00;  // Вход
+constexpr u32 GPIO_Output = 0x10;  // Выход
+
+
 template <uc32 GPIOx, uc32 PINx>
 class Pin {
 public:
@@ -44,18 +69,21 @@ public:
   INLINE void clr() { ((GPIO_TypeDef *)GPIOx)->BCR = 1 << PINx; }
   INLINE void inv() { ((GPIO_TypeDef *)GPIOx)->OUTDR ^= 1 << PINx; }
   INLINE u32 get() { return ((GPIO_TypeDef *)GPIOx)->INDR & (1 << PINx); }
+  INLINE void out(bool data) {
+    if (data) set();
+    else clr();
+  }
 
-  INLINE void in_analog() { mode(GPIO_Imput_Analog); }
-  INLINE void in_nc() { mode(GPIO_Imput_Float); }
-  INLINE void in_gnd() {
-    ((GPIO_TypeDef *)GPIOx)->BCR = (((u32)0x01) << PINx);
-    mode(GPIO_Imput_Pull);
-  }
-  INLINE void in_vcc() {
-    ((GPIO_TypeDef *)GPIOx)->BSHR = (((u32)0x01) << PINx);
-    mode(GPIO_Imput_Pull);
-  }
-  INLINE void out(uc32 conf = GPIO_10MHz) { mode(conf); }
+  // INLINE void in_analog() { mode(GPIO_Imput_Analog); }
+  // INLINE void in_nc() { mode(GPIO_Imput_Float); }
+  // INLINE void in_gnd() {
+  //   ((GPIO_TypeDef *)GPIOx)->BCR = (((u32)0x01) << PINx);
+  //   mode(GPIO_Imput_Pull);
+  // }
+  // INLINE void in_vcc() {
+  //   ((GPIO_TypeDef *)GPIOx)->BSHR = (((u32)0x01) << PINx);
+  //   mode(GPIO_Imput_Pull);
+  // }
 
   INLINE void mode(uc32 conf) {
     if (PINx < 8)
@@ -76,7 +104,7 @@ public:
   INLINE u32 get() { return ((GPIO_TypeDef *)GPIOx)->INDR; }
   INLINE void out(u32 data) { ((GPIO_TypeDef *)GPIOx)->OUTDR = data; }
   INLINE void init(uc32 conf = GPIO_Output_PP | GPIO_2MHz) {
-    for (u32 pin = 0; pin < 8; pin++){
+    for (u32 pin = 0; pin < 8; pin++) {
       if (((u32)0x001 << pin) & PINS)
         ((GPIO_TypeDef *)GPIOx)->CFGLR =
           (((GPIO_TypeDef *)GPIOx)->CFGLR &
