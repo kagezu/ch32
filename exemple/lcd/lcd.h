@@ -1,12 +1,12 @@
-// #define WR_FORSED     // Аппаратное тактирование
+#define WR_FORSED     // Аппаратное тактирование
 #include "display.h"
 
 // Цветовая модель
 
 // #define RGB         RGB12   // 4x4x4 bit
-// #define RGB         RGB16   // 5x6x5 bit
+#define RGB         RGB16   // 5x6x5 bit
 // #define RGB         RGB18   // 6x6x6 bit
-#define RGB         RGB24   // 8x8x8 bit
+// #define RGB         RGB24   // 8x8x8 bit
 
 
 // Поворот дисплея

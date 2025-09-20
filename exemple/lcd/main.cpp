@@ -1,14 +1,12 @@
 #include "core.h"
 #include "lcd.h"
 
-#define USER_B(f) f(A, 0)
-
+Pin<PA, 0> USER_B;
 LCD lcd;
-
 int mode = 1;
 
 int main(void) {
-  USER_B(P_GND);
+  USER_B.init(GP_GND);
   lcd.init();
   if (lcd.max_y() > 300) lcd.font(sans_24, 0, 0);
   else lcd.font(serif_18i, 0, 0);
@@ -19,8 +17,8 @@ int main(void) {
 
   int x = 0;
   while (true) {
-    if (USER_B(GET)) {
-      while (USER_B(GET));
+    if (USER_B.get()) {
+      while (USER_B.get());
       mode++;
     }
     STK_C;
