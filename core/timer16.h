@@ -33,17 +33,43 @@ constexpr static TIM_TypeDef *T_16(u32 N) {
 */
 template <const auto N>
 class T16 {
-protected:
-  u32 f_in;
-  u32 f_clk;
-  // u32 f_cycle;
+private:
+  // Установка режима вывода
+  INLINE void OCxREF(uc16 config, uc32 ch) {
+    if (ch < 3)
+      T_16(N)->CHCTLR1 =
+        (T_16(N)->CHCTLR1 &
+         ~(0xFF << ((ch - 1) << 3))) |
+        (config << ((ch - 1) << 3));
+    else
+      T_16(N)->CHCTLR2 =
+        (T_16(N)->CHCTLR2 &
+         ~(0xFF << ((ch - 3) << 3))) |
+        (config << ((ch - 3) << 3));
+  }
+
+  // Прерывания и DMA запросы
+  INLINE void INTDMA(uc16 config, uc32 ch) {
+    T_16(N)->DMAINTENR =
+      (T_16(N)->DMAINTENR &
+       ~(TIM_INT | TIM_DMA)) |
+      ((config & (TIM_INT | TIM_DMA)) << ch);
+  }
+
+  // Инверсия вывода
+  INLINE void OUTx(uc16 config, uc32 ch) {
+    T_16(N)->CCER =
+      (T_16(N)->CCER &
+       ~((TIM_INV | TIM_EN) << ((ch - 1) << 2))) |
+      (config << ((ch - 1) << 2));
+  }
 
 public:
   T16() {
     if (N == 1) RCC->APB2PCENR |= RCC_TIM1EN;
     else RCC->APB1PCENR |= (RCC_TIM2EN << (N - 2));
     T_16(N)->CTLR1 = 0;       // стоп
-    T_16(N)->PSC = 0;         // Prescaler
+    T_16(N)->PSC   = 0;       // Prescaler
     T_16(N)->ATRLR = 0xffff;  // Top
   }
   ~T16() {
@@ -71,54 +97,44 @@ public:
 
   // Функции таймера
 
-  // Установить in_clk TOP OCR, out_enable, enable
+  // Установить TOP OCR, out_enable, enable
   INLINE void compare(uc16 config, uc32 ch) {
-    using namespace TimerConfig;
-    T_16(N)->DMAINTENR =  // Прерывания и DMA запросы
-      (T_16(N)->DMAINTENR & ~(config & (INT | DMA))) |
-      ((config & (INT | DMA)) << ch);
-
-    if (ch < 3)  // Установка режима вывода
-      T_16(N)->CHCTLR1 =
-        (T_16(N)->CHCTLR1 & ~((TIM_OC1M | TIM_OC1PE | TIM_CC1S) << ((ch - 1) << 3))) |
-        ((OVR & config) << ((ch - 1) << 3));
-    else
-      T_16(N)->CHCTLR1 =
-        (T_16(N)->CHCTLR1 & ~((TIM_OC1M | TIM_OC1PE | TIM_CC1S) << ((ch - 3) << 3))) |
-        ((OVR & config) << ((ch - 3) << 3));
-
-    T_16(N)->CCER |= (config & INV) << ((ch - 1) << 2);  // Инверсия
-    T_16(N)->CTLR1 &= ~TIM_ARPE;                          // Отключить прелоад регистр
-    if (N == 1) T_16(N)->BDTR |= TIM_MOE;                // для TIM1
+    INTDMA(config & (TIM_INT | TIM_DMA), ch);  // Прерывания и DMA запросы
+    OCxREF(TIM_OVR & config, ch);              // Установка режима вывода
+    OUTx((config & TIM_INV) | TIM_EN, ch);     // Инверсия и включение канала
+    T_16(N)->CTLR1 &= ~TIM_ARPE;               // Отключить прелоад регистр
+    // T_16(N)->CTLR1 |= TIM_ARPE;
+    if (N == 1) T_16(N)->BDTR |= TIM_MOE;  // для TIM1
   }
 
   // Предварительно установить in_clk TOP OCR
   INLINE void pwm(uc16 config, uc32 ch) {
-    using namespace TimerConfig;
-    T_16(N)->SWEVGR = TIM_UG;    // Инициализация теневых регистров
-    T_16(N)->DMAINTENR =  // Прерывания и DMA запросы
-      (T_16(N)->DMAINTENR & ~(config & (INT | DMA))) |
-      ((config & (INT | DMA)) << ch);
-
-    if (ch < 3)  // Установка режима вывода
-      T_16(N)->CHCTLR1 =
-        (T_16(N)->CHCTLR1 & ~((TIM_OC1M | TIM_CC1S) << ((ch - 1) << 3))) |
-        ((PWM | TIM_OC1PE) << ((ch - 1) << 3));
-    else
-      T_16(N)->CHCTLR1 =
-        (T_16(N)->CHCTLR1 & ~((TIM_OC1M | TIM_CC1S) << ((ch - 3) << 3))) |
-        ((PWM | TIM_OC1PE) << ((ch - 3) << 3));
-
-    T_16(N)->CCER |= (config & INV) << ((ch - 1) << 2);  // Инверсия
-    T_16(N)->CTLR1 |= TIM_ARPE;                          // Использовать прелоад регистр
-    if (N == 1) T_16(N)->BDTR |= TIM_MOE;                // для TIM1
+    T_16(N)->SWEVGR = TIM_UG;                                  // Инициализация теневых регистров
+    INTDMA(config & (TIM_INT | TIM_DMA), ch);                  // Прерывания и DMA запросы
+    OCxREF((TIM_PWM_INV & config) | TIM_PWM | TIM_OC1PE, ch);  // Установка режима вывода
+    OUTx((config & TIM_INV) | TIM_EN, ch);                     // Инверсия и включение канала
+    T_16(N)->CTLR1 |= TIM_ARPE;                                // Использовать прелоад регистр
+    if (N == 1) T_16(N)->BDTR |= TIM_MOE;                      // для TIM1
   }
+
+  INLINE void forced(bool out, uc32 ch = 1) {
+    if (out) OCxREF(TIM_H, ch);
+    else OCxREF(TIM_L, ch);
+  }
+
+  INLINE void encoder(bool out) {
+    // if (out) OCxREF(TIM_H, ch);
+    // else OCxREF(TIM_L, ch);
+  }
+
+INLINE void capture(uc16 config, uc32 ch) {}
+INLINE void capture_pwm(uc16 config, uc32 ch) {}
+
 
 
   INLINE void init(uc32 mod) {}
 
   INLINE void direct(uc16 mod) {
-    using namespace TimerConfig;
     u16 ctlr1 = T_16(N)->CTLR1 & ~(TIM_DIR | TIM_CMS);
     switch (mod) {
       case DIR: break;
@@ -138,7 +154,6 @@ public:
     else T_16(N)->CCER &= ~((u16)1 << (((ch - 1) << 2) + 1));
   }
   INLINE void mode(u32 mod, uc32 ch = 1) {
-    using namespace TimerConfig;
     u16 chctlr, sl = ch - 1;
     if (ch < 3) chctlr = T_16(N)->CHCTLR1 & ~((TIM_OC1M | TIM_CC1S) << (sl << 3));
     else {
@@ -146,9 +161,9 @@ public:
       chctlr = T_16(N)->CHCTLR2 & ~((TIM_OC3M | TIM_CC3S) << (sl << 3));
     }
     switch (mod) {
-      case CMP: chctlr |= (TIM_OC1M_0 | TIM_OC1M_1) << sl; break;  // Инверсия
-      case PWM: chctlr |= (TIM_OC1M_1 | TIM_OC1M_2) << sl; break;  // ШИМ 1
-      case CAP: chctlr |= TIM_CC1S_0 << sl; break;                 // Захват IC1 => TI1
+      case CMP: chctlr |= (TIM_OC1M_0 | TIM_OC1M_1) << sl; break;      // Инверсия
+      case TIM_PWM: chctlr |= (TIM_OC1M_1 | TIM_OC1M_2) << sl; break;  // ШИМ 1
+      case CAP: chctlr |= TIM_CC1S_0 << sl; break;                     // Захват IC1 => TI1
     }
     if (ch < 3) T_16(N)->CHCTLR1 = chctlr;
     else T_16(N)->CHCTLR2 = chctlr;
@@ -189,7 +204,7 @@ INLINE void int_dis() {
     case 2: EPIC->MASK_LEVEL_CLEAR = EPIC_LINE_M(EPIC_LINE_TIMER32_2_S); break;
   }
 }
-  */
+
 
   // Установка частоты
 
@@ -207,7 +222,7 @@ INLINE void int_dis() {
     // f_get();
   }
 
-  /*
+ 
     void f_get() {
       switch (T_32(N)->CONTROL & TIMER32_CONTROL_CLOCK_M) {
         case TIMER32_CONTROL_CLOCK_PRESCALER_M:

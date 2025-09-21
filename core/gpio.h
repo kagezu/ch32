@@ -50,10 +50,10 @@ constexpr u32 GPO_2MHz  = 0x02;
 constexpr u32 GPO_50MHz = 0x03;
 
 // Для совместимости
-constexpr u32 GP_2mA = 0x03;
-constexpr u32 GP_4mA = 0x01;
-constexpr u32 GP_8mA = 0x02;
-constexpr u32 GP_Max = 0x02;
+constexpr u32 GPO_2mA = 0x03;
+constexpr u32 GPO_4mA = 0x01;
+constexpr u32 GPO_8mA = 0x02;
+constexpr u32 GPO_Max = 0x02;
 
 
 template <uc32 GPIOx, uc32 PINx>
