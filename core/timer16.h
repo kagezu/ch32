@@ -1,7 +1,7 @@
 #pragma once
 #include "timer.h"
 
-constexpr static TIM_TypeDef *T_16(u32 N) {
+constexpr static TIM_TypeDef *T_16(auto N) {
   switch (N) {
     case 1: return TIM1;
     case 2: return TIM2;
@@ -68,14 +68,12 @@ public:
   T16() {
     if (N == 1) RCC->APB2PCENR |= RCC_TIM1EN;
     else RCC->APB1PCENR |= (RCC_TIM2EN << (N - 2));
-    T_16(N)->CTLR1 = 0;       // стоп
-    T_16(N)->PSC   = 0;       // Prescaler
-    T_16(N)->ATRLR = 0xffff;  // Top
+    T_16(N)->CTLR1 = 0;  // стоп
   }
-  ~T16() {
-    if (N == 1) RCC->APB2PCENR &= ~RCC_TIM1EN;
-    else RCC->APB1PCENR &= ~(RCC_TIM2EN << (N - 2));
-  }
+  // ~T16() {
+  //   if (N == 1) RCC->APB2PCENR &= ~RCC_TIM1EN;
+  //   else RCC->APB1PCENR &= ~(RCC_TIM2EN << (N - 2));
+  // }
 
   // Регистры
 
@@ -84,8 +82,22 @@ public:
   INLINE void PSC(u16 val) { T_16(N)->PSC = val; }
   INLINE void TOP(u16 val) { T_16(N)->ATRLR = val; }
   INLINE void REP(u8 val) { T_16(N)->RPTCR = val; }
-  INLINE void OCR(u16 val, uc32 ch) { *(&(T_16(N)->RPTCR) + (ch << 1)) = val; }
-  INLINE u16 ICR(uc32 ch) { return *(&(T_16(N)->RPTCR) + (ch << 1)); }  // CH1CVR - CH4CVR
+  INLINE void OCR(u16 val, uc32 ch) {
+    switch (ch) {
+      case 1: T_16(N)->CH1CVR = val; break;
+      case 2: T_16(N)->CH2CVR = val; break;
+      case 3: T_16(N)->CH3CVR = val; break;
+      case 4: T_16(N)->CH4CVR = val; break;
+    }
+  }
+  INLINE u16 ICR(uc32 ch) {
+    switch (ch) {
+      case 1: return T_16(N)->CH1CVR;
+      case 2: return T_16(N)->CH2CVR;
+      case 3: return T_16(N)->CH3CVR;
+      case 4: return T_16(N)->CH4CVR;
+    }
+  }
 
   // Общие
 
@@ -102,7 +114,7 @@ public:
     INTDMA(config & (TIM_INT | TIM_DMA), ch);  // Прерывания и DMA запросы
     OCxREF(TIM_OVR & config, ch);              // Установка режима вывода
     OUTx((config & TIM_INV) | TIM_EN, ch);     // Инверсия и включение канала
-    T_16(N)->CTLR1 &= ~TIM_ARPE;               // Отключить прелоад регистр
+    T_16(N)->CTLR1 &= ~(TIM_ARPE | TIM_UDIS);  // Отключить обновление регистров (ARR, PSC, CHxCVR)
     // T_16(N)->CTLR1 |= TIM_ARPE;
     if (N == 1) T_16(N)->BDTR |= TIM_MOE;  // для TIM1
   }
@@ -122,59 +134,41 @@ public:
     else OCxREF(TIM_L, ch);
   }
 
-  INLINE void encoder(bool out) {
-    // if (out) OCxREF(TIM_H, ch);
-    // else OCxREF(TIM_L, ch);
+  INLINE void encoder() { T_16(N)->SMCFGR = TIM_ENC3; }
+
+  // ts = ITR[0, 1, 2, 3] + [4(in)]  sms = 0(CK_INT), 1,2,3(encoder), 5(Gating mode)
+  INLINE void slave(uc16 trig) {
+    T_16(N)->SMCFGR = 0;
+    T_16(N)->SMCFGR = trig;
   }
+  INLINE void master(uc16 mms) { T_16(N)->CTLR2 |= mms; }
 
-INLINE void capture(uc16 config, uc32 ch) {}
-INLINE void capture_pwm(uc16 config, uc32 ch) {}
-
-
+  INLINE void capture(uc16 config, uc32 ch) {}
+  INLINE void capture_pwm(uc16 config, uc32 ch) {}
 
   INLINE void init(uc32 mod) {}
 
-  INLINE void direct(uc16 mod) {
+  INLINE void direct(uc16 mod = 0) {
     u16 ctlr1 = T_16(N)->CTLR1 & ~(TIM_DIR | TIM_CMS);
     switch (mod) {
-      case DIR: break;
-      case REV: ctlr1 |= TIM_DIR; break;
-      case BI: ctlr1 |= TIM_CMS; break;
+      case 0: break;
+      case TIM_REV: ctlr1 |= TIM_DIR; break;
+      case TIM_BI: ctlr1 |= TIM_CMS; break;
     }
     T_16(N)->CTLR1 = ctlr1;
   }
 
   // Каналы
 
-  INLINE void out_enable(uc16 ch) { T_16(N)->CCER |= (u16)1 << ((ch - 1) << 2); }
-  INLINE void out_disable(uc16 ch) { T_16(N)->CCER &= ~((u16)1 << ((ch - 1) << 2)); }
-
-  INLINE void inv(const bool mod = true, uc32 ch = 1) {
-    if (mod) T_16(N)->CCER |= (u16)1 << (((ch - 1) << 2) + 1);
-    else T_16(N)->CCER &= ~((u16)1 << (((ch - 1) << 2) + 1));
-  }
-  INLINE void mode(u32 mod, uc32 ch = 1) {
-    u16 chctlr, sl = ch - 1;
-    if (ch < 3) chctlr = T_16(N)->CHCTLR1 & ~((TIM_OC1M | TIM_CC1S) << (sl << 3));
-    else {
-      sl -= 2;
-      chctlr = T_16(N)->CHCTLR2 & ~((TIM_OC3M | TIM_CC3S) << (sl << 3));
-    }
-    switch (mod) {
-      case CMP: chctlr |= (TIM_OC1M_0 | TIM_OC1M_1) << sl; break;      // Инверсия
-      case TIM_PWM: chctlr |= (TIM_OC1M_1 | TIM_OC1M_2) << sl; break;  // ШИМ 1
-      case CAP: chctlr |= TIM_CC1S_0 << sl; break;                     // Захват IC1 => TI1
-    }
-    if (ch < 3) T_16(N)->CHCTLR1 = chctlr;
-    else T_16(N)->CHCTLR2 = chctlr;
-    if (ch == 1) T_16(N)->BDTR = TIM_MOE;
-  }
-  // ts = ITR[0, 1, 2, 3] + [4(in)]  sms = 0(CK_INT), 1,2,3(encoder), 5(Gating mode)
-  INLINE void slave(u16 ts, u16 sms) { T_16(N)->SMCFGR = (ts << 4) | sms; }
-  // mms = 1(CNT_EN), 4-7(OC1-4)
-  INLINE void master(u16 mms) { T_16(N)->CTLR2 = mms << 4; }
+  INLINE void enable(uc16 ch) { T_16(N)->CCER |= (u16)1 << ((ch - 1) << 2); }
+  INLINE void disable(uc16 ch) { T_16(N)->CCER &= ~((u16)1 << ((ch - 1) << 2)); }
 
   // Прерывания
+
+  INLINE void int_cleat() { TIM3->INTFR = 0; }
+  INLINE void ovf_wait() { while ((TIM3->INTFR & TIM_UIF) == 0); }
+
+
   /*
 INLINE void int_ovf(const bool on = true) {
   T_32(N)->INT_MASK = on ? T_32(N)->INT_MASK |= TIMER32_INT_OVERFLOW_M : T_32(N)->INT_MASK &= ~TIMER32_INT_OVERFLOW_M;
@@ -222,7 +216,7 @@ INLINE void int_dis() {
     // f_get();
   }
 
- 
+
     void f_get() {
       switch (T_32(N)->CONTROL & TIMER32_CONTROL_CLOCK_M) {
         case TIMER32_CONTROL_CLOCK_PRESCALER_M:
@@ -249,3 +243,9 @@ INLINE void int_dis() {
     }
     */
 };
+
+T16<1> tim1;
+T16<2> tim2;
+T16<3> tim3;
+T16<4> tim4;
+T16<5> tim5;
