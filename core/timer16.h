@@ -1,7 +1,8 @@
 #pragma once
 #include "timer.h"
 
-constexpr static TIM_TypeDef *T_16(auto N) {
+constexpr static TIM_TypeDef *T_16(auto N)
+{
   switch (N) {
     case 1: return TIM1;
     case 2: return TIM2;
@@ -35,37 +36,41 @@ template <const auto N>
 class T16 {
 private:
   // Установка режима вывода
-  INLINE void OCxREF(uc16 config, uc32 ch) {
+  INLINE void OCxREF(uc16 config, uc32 ch)
+  {
     if (ch < 3)
       T_16(N)->CHCTLR1 =
-        (T_16(N)->CHCTLR1 &
-         ~(0xFF << ((ch - 1) << 3))) |
-        (config << ((ch - 1) << 3));
+      (T_16(N)->CHCTLR1 &
+        ~(0xFF << ((ch - 1) << 3))) |
+      (config << ((ch - 1) << 3));
     else
       T_16(N)->CHCTLR2 =
-        (T_16(N)->CHCTLR2 &
-         ~(0xFF << ((ch - 3) << 3))) |
-        (config << ((ch - 3) << 3));
+      (T_16(N)->CHCTLR2 &
+        ~(0xFF << ((ch - 3) << 3))) |
+      (config << ((ch - 3) << 3));
   }
 
   // Прерывания и DMA запросы
-  INLINE void INTDMA(uc16 config, uc32 ch) {
+  INLINE void INTDMA(uc16 config, uc32 ch)
+  {
     T_16(N)->DMAINTENR =
       (T_16(N)->DMAINTENR &
-       ~(TIM_INT | TIM_DMA)) |
+        ~(TIM_INT | TIM_DMA)) |
       ((config & (TIM_INT | TIM_DMA)) << ch);
   }
 
   // Инверсия вывода
-  INLINE void OUTx(uc16 config, uc32 ch) {
+  INLINE void OUTx(uc16 config, uc32 ch)
+  {
     T_16(N)->CCER =
       (T_16(N)->CCER &
-       ~((TIM_INV | TIM_EN) << ((ch - 1) << 2))) |
+        ~((TIM_INV | TIM_EN) << ((ch - 1) << 2))) |
       (config << ((ch - 1) << 2));
   }
 
 public:
-  T16() {
+  T16()
+  {
     if (N == 1) RCC->APB2PCENR |= RCC_TIM1EN;
     else RCC->APB1PCENR |= (RCC_TIM2EN << (N - 2));
     T_16(N)->CTLR1 = 0;  // стоп
@@ -82,7 +87,8 @@ public:
   INLINE void PSC(u16 val) { T_16(N)->PSC = val; }
   INLINE void TOP(u16 val) { T_16(N)->ATRLR = val; }
   INLINE void REP(u8 val) { T_16(N)->RPTCR = val; }
-  INLINE void OCR(u16 val, uc32 ch) {
+  INLINE void OCR(u16 val, uc32 ch)
+  {
     switch (ch) {
       case 1: T_16(N)->CH1CVR = val; break;
       case 2: T_16(N)->CH2CVR = val; break;
@@ -90,7 +96,8 @@ public:
       case 4: T_16(N)->CH4CVR = val; break;
     }
   }
-  INLINE u16 ICR(uc32 ch) {
+  INLINE u16 ICR(uc32 ch)
+  {
     switch (ch) {
       case 1: return T_16(N)->CH1CVR;
       case 2: return T_16(N)->CH2CVR;
@@ -110,7 +117,8 @@ public:
   // Функции таймера
 
   // Установить TOP OCR, out_enable, enable
-  INLINE void compare(uc16 config, uc32 ch) {
+  INLINE void compare(uc16 config, uc32 ch)
+  {
     INTDMA(config & (TIM_INT | TIM_DMA), ch);  // Прерывания и DMA запросы
     OCxREF(TIM_OVR & config, ch);              // Установка режима вывода
     OUTx((config & TIM_INV) | TIM_EN, ch);     // Инверсия и включение канала
@@ -120,7 +128,8 @@ public:
   }
 
   // Предварительно установить in_clk TOP OCR
-  INLINE void pwm(uc16 config, uc32 ch) {
+  INLINE void pwm(uc16 config, uc32 ch)
+  {
     T_16(N)->SWEVGR = TIM_UG;                                  // Инициализация теневых регистров
     INTDMA(config & (TIM_INT | TIM_DMA), ch);                  // Прерывания и DMA запросы
     OCxREF((TIM_PWM_INV & config) | TIM_PWM | TIM_OC1PE, ch);  // Установка режима вывода
@@ -129,7 +138,8 @@ public:
     if (N == 1) T_16(N)->BDTR |= TIM_MOE;                      // для TIM1
   }
 
-  INLINE void forced(bool out, uc32 ch = 1) {
+  INLINE void forced(bool out, uc32 ch = 1)
+  {
     if (out) OCxREF(TIM_H, ch);
     else OCxREF(TIM_L, ch);
   }
@@ -137,7 +147,8 @@ public:
   INLINE void encoder() { T_16(N)->SMCFGR = TIM_ENC3; }
 
   // ts = ITR[0, 1, 2, 3] + [4(in)]  sms = 0(CK_INT), 1,2,3(encoder), 5(Gating mode)
-  INLINE void slave(uc16 trig) {
+  INLINE void slave(uc16 trig)
+  {
     T_16(N)->SMCFGR = 0;
     T_16(N)->SMCFGR = trig;
   }
@@ -148,7 +159,8 @@ public:
 
   INLINE void init(uc32 mod) {}
 
-  INLINE void direct(uc16 mod = 0) {
+  INLINE void direct(uc16 mod = 0)
+  {
     u16 ctlr1 = T_16(N)->CTLR1 & ~(TIM_DIR | TIM_CMS);
     switch (mod) {
       case 0: break;
