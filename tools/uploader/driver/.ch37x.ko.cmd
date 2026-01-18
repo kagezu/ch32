@@ -1,0 +1,1 @@
+savedcmd_/home/hinto/project/ch32/tools/uploader/driver/ch37x.ko := ld -r -m elf_x86_64 -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T scripts/module.lds -o /home/hinto/project/ch32/tools/uploader/driver/ch37x.ko /home/hinto/project/ch32/tools/uploader/driver/ch37x.o /home/hinto/project/ch32/tools/uploader/driver/ch37x.mod.o

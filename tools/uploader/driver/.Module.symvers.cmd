@@ -1,0 +1,1 @@
+savedcmd_/home/hinto/project/ch32/tools/uploader/driver/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/hinto/project/ch32/tools/uploader/driver/Module.symvers -T /home/hinto/project/ch32/tools/uploader/driver/modules.order -i Module.symvers -e 

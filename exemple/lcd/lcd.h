@@ -12,9 +12,9 @@
 // Поворот дисплея
 
 // #define LCD_ROT     R_0
-// #define LCD_ROT     R_90
+#define LCD_ROT     R_90
 // #define LCD_ROT     R_180
-#define LCD_ROT     R_270
+// #define LCD_ROT     R_270
 // #define LCD_ROT     R_X
 // #define LCD_ROT     R_Y
 // #define LCD_ROT     R_EX
@@ -22,13 +22,13 @@
 
 
 // #define LCD Display<ST7735_SOFT<RGB>, LCD_ROT>   // RGB12, RGB16, RGB18
-// #define LCD Display<ST7735<SPI<2>, RGB>, LCD_ROT>  // RGB12, RGB16, RGB18
+#define LCD Display<ST7735<SPI<2>, RGB>, LCD_ROT>  // RGB12, RGB16, RGB18
 // #define LCD Display<ILI9225_SOFT, LCD_ROT>       // RGB16
 // #define LCD Display<ILI9225<SPI<2>>, LCD_ROT>      // RGB16
 // #define LCD Display<ST7789<RGB>, LCD_ROT>        // RGB12, RGB16, RGB18
 // #define LCD Display<ILI9486_8<RGB>, LCD_ROT>     // RGB16, RGB18
 // #define LCD Display<ILI9486_16<RGB>, LCD_ROT>    // RGB16, RGB18
-#define LCD Display<NT35510<RGB>, LCD_ROT>       // RGB16, RGB18, RBB24
+// #define LCD Display<NT35510<RGB>, LCD_ROT>       // RGB16, RGB18, RBB24
 
 
 // Шрифты

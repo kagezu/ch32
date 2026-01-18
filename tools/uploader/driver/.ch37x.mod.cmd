@@ -1,0 +1,1 @@
+savedcmd_/home/hinto/project/ch32/tools/uploader/driver/ch37x.mod := printf '%s\n'   ch37x.o | awk '!x[$$0]++ { print("/home/hinto/project/ch32/tools/uploader/driver/"$$0) }' > /home/hinto/project/ch32/tools/uploader/driver/ch37x.mod

@@ -84,6 +84,7 @@ public:
 template <uc32 GPIOx, uc32 PINS>
 class Port {
 public:
+  INLINE GPIO_TypeDef *gpio() { return (GPIO_TypeDef *)GPIOx; }
   INLINE u32 get() { return ((GPIO_TypeDef *)GPIOx)->INDR; }
   INLINE void out(u32 data) { ((GPIO_TypeDef *)GPIOx)->OUTDR = data; }
   void init(uc32 conf = GPO_2MHz) {

@@ -1,0 +1,1 @@
+savedcmd_/home/hinto/project/ch32/tools/uploader/driver/modules.order := {   echo /home/hinto/project/ch32/tools/uploader/driver/ch37x.o; :; } > /home/hinto/project/ch32/tools/uploader/driver/modules.order
