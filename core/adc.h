@@ -10,12 +10,9 @@
 #define ADC_SMP_6   6  // 71.5
 #define ADC_SMP_7   7  // 239.5
 
-
-#define ADC_GAIN_S    27
 #define ADC_DUALMOD_S 16
-
 #define ADC_EXTSEL_S  17
-
+#define ADC_GAIN_S    27
 
 static const uint16_t AdcSmpclk[] = {3 + 22, 15 + 22, 27 + 22, 57 + 22, 83 + 22, 111 + 22, 143 + 22, 479 + 22};
 
@@ -45,31 +42,32 @@ public:
     }
     chanel(ch);
 
-    ADC1->CTLR1 =
+    ADC2->CTLR1 =
       (0b00 << ADC_GAIN_S) |       // Усиление 1, 4, 16, 64
-      (0b0111 << ADC_DUALMOD_S) |  // Fast mode
+      // (0b0111 << ADC_DUALMOD_S) |  // Fast mode
       // (0b1000 << ADC_DUALMOD_S) |  // Slow mode
       0;
-    ADC1->CTLR2 =
+    ADC2->CTLR2 =
       // ADC_EXTTRIG |            // External trigger
-      // (0b111 << ADC_EXTSEL_S) |  // Software trigger
+      (0b111 << ADC_EXTSEL_S) |  // Software trigger
       // ADC_ALIGN | // Left
       // ADC_DMA |
       // ADC_CONT |
       ADC_ADON;
 
-    ADC2->CTLR1 =
-      (0b00 << ADC_GAIN_S) |       // Усиление 1, 4, 16, 64
-      (0b0111 << ADC_DUALMOD_S) |  // Fast mode
+    ADC1->CTLR1 =
+      // (0b00 << ADC_GAIN_S) |       // Усиление 1, 4, 16, 64
+      // (0b0111 << ADC_DUALMOD_S) |  // Fast mode
       // (0b1000 << ADC_DUALMOD_S) |  // Slow mode
       0;
-    ADC2->CTLR2 =
+    ADC1->CTLR2 =
       // ADC_EXTTRIG |            // External trigger
-      // (0b111 << ADC_EXTSEL_S) |  // Software trigger
+      (0b111 << ADC_EXTSEL_S) |  // Software trigger
       // ADC_ALIGN | // Left
       // ADC_DMA |
       // ADC_CONT |
       ADC_ADON;
+
   }
 
   // Преобразует число тактов в допустимое SMP
