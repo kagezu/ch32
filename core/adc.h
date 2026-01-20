@@ -1,18 +1,20 @@
 #pragma once
 #include "core.h"
 
-#define ADC_SMP_0   0  // 1.5
-#define ADC_SMP_1   1  // 7.5
-#define ADC_SMP_2   2  // 13.5
-#define ADC_SMP_3   3  // 28.5
-#define ADC_SMP_4   4  // 41.5
-#define ADC_SMP_5   5  // 55.5
-#define ADC_SMP_6   6  // 71.5
-#define ADC_SMP_7   7  // 239.5
+#define ADC_SMP_0     0  // 1.5
+#define ADC_SMP_1     1  // 7.5
+#define ADC_SMP_2     2  // 13.5
+#define ADC_SMP_3     3  // 28.5
+#define ADC_SMP_4     4  // 41.5
+#define ADC_SMP_5     5  // 55.5
+#define ADC_SMP_6     6  // 71.5
+#define ADC_SMP_7     7  // 239.5
 
 #define ADC_DUALMOD_S 16
 #define ADC_EXTSEL_S  17
 #define ADC_GAIN_S    27
+
+#define ADC_BUFEN     ((uint32_t)0x04000000)
 
 static const uint16_t AdcSmpclk[] = {3 + 22, 15 + 22, 27 + 22, 57 + 22, 83 + 22, 111 + 22, 143 + 22, 479 + 22};
 
@@ -25,7 +27,7 @@ public:
   // constexpr static int SAH_MAX = 63; // Максимальное время выборки
   constexpr static int DEPTH = 12;  // Разрядность АЦП
   // constexpr static int TIME = 14;    // Время преобразования
-  constexpr static int AREF = 3300;  // Опорное напряжение в милливольтах
+  constexpr static int AREF  = 3300;  // Опорное напряжение в милливольтах
 
 public:
   // template<const int ch>
@@ -42,32 +44,33 @@ public:
     }
     chanel(ch);
 
-    ADC2->CTLR1 =
-      (0b00 << ADC_GAIN_S) |       // Усиление 1, 4, 16, 64
-      // (0b0111 << ADC_DUALMOD_S) |  // Fast mode
-      // (0b1000 << ADC_DUALMOD_S) |  // Slow mode
-      0;
+    // ADC2->CTLR1 =
+    //   (0b00 << ADC_GAIN_S) |  // Усиление 1, 4, 16, 64
+    //   ADC_BUFEN |
+    //   // (0b0111 << ADC_DUALMOD_S) |  // Fast mode
+    //   // (0b1000 << ADC_DUALMOD_S) |  // Slow mode
+    //   0;
     ADC2->CTLR2 =
-      // ADC_EXTTRIG |            // External trigger
-      (0b111 << ADC_EXTSEL_S) |  // Software trigger
+      ADC_EXTTRIG |                // External trigger
+      ADC_ExternalTrigConv_None |  // Software trigger
       // ADC_ALIGN | // Left
       // ADC_DMA |
       // ADC_CONT |
       ADC_ADON;
 
-    ADC1->CTLR1 =
-      // (0b00 << ADC_GAIN_S) |       // Усиление 1, 4, 16, 64
-      // (0b0111 << ADC_DUALMOD_S) |  // Fast mode
-      // (0b1000 << ADC_DUALMOD_S) |  // Slow mode
-      0;
+    // ADC1->CTLR1 =
+    //   (0b01 << ADC_GAIN_S) |  // Усиление 1, 4, 16, 64
+    //   ADC_BUFEN |
+    //   // (0b0111 << ADC_DUALMOD_S) |  // Fast mode
+    //   // (0b1000 << ADC_DUALMOD_S) |  // Slow mode
+    //   0;
     ADC1->CTLR2 =
-      // ADC_EXTTRIG |            // External trigger
-      (0b111 << ADC_EXTSEL_S) |  // Software trigger
+      ADC_EXTTRIG |                // External trigger
+      ADC_ExternalTrigConv_None |  // Software trigger
       // ADC_ALIGN | // Left
       // ADC_DMA |
       // ADC_CONT |
       ADC_ADON;
-
   }
 
   // Преобразует число тактов в допустимое SMP
@@ -84,17 +87,19 @@ public:
 
   INLINE static void delay(int time) {
     ADC1->SAMPTR2 = smp(time) << (ch1 * 3);
+    ADC2->SAMPTR2 = smp(time) << (ch1 * 3);
   }
 
   INLINE static void chanel(int ch) {
-    ch1 = ch;
+    ch1         = ch;
     ADC1->RSQR3 = ch;
     ADC2->RSQR3 = ch;
   }
 
-  INLINE static void single() { ADC1->CTLR2 = ADC_ADON; }
-  INLINE static void start() { ADC1->CTLR2 = ADC_CONT | ADC_ADON; }
-  INLINE static void stop() { ADC1->CTLR2 = ADC_ADON; }  // Снять CONT
+  INLINE static void gain(u32 gain) { ADC1->CTLR1 = ADC_BUFEN | (gain << ADC_GAIN_S); }
+  INLINE static void single() { ADC1->CTLR2 |= ADC_ADON | ADC_SWSTART; }
+  INLINE static void start() { ADC1->CTLR2 |= ADC_CONT | ADC_ADON | ADC_SWSTART; }
+  INLINE static void stop() { ADC1->CTLR2 &= ~(ADC_CONT | ADC_SWSTART); }  // Снять CONT
   INLINE static void wait() { while (!(ADC1->STATR & ADC_EOC)); }
   INLINE static uint32_t value() { return ADC1->RDATAR; }
 };
