@@ -104,8 +104,8 @@ static void SetSysClockTo144_HSI(void);
 void SystemError() {
   GPIO_InitTypeDef GPIO_InitStructure;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_2;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   while (1) {
@@ -135,8 +135,24 @@ void SystemInit(void) {
   SetSysClock();
   SystemCoreClockUpdate();
 
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+  RCC->APB2PCENR =
+    // | RCC_APB2Periph_AFIO
+    RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB
+    // | RCC_APB2Periph_GPIOC
+    // | RCC_APB2Periph_GPIOD
+    // | RCC_APB2Periph_GPIOE
+    | RCC_APB2Periph_ADC1 | RCC_APB2Periph_ADC2
+    // | RCC_APB2Periph_TIM1
+    // | RCC_APB2Periph_SPI1
+    // | RCC_APB2Periph_TIM8
+    // | RCC_APB2Periph_USART1
+    // | RCC_APB2Periph_TIM9
+    // | RCC_APB2Periph_TIM10
+    ;
+
+
+  // RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+  // RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 
   // if (F_CPU != SystemCoreClock) SystemError();
 }
@@ -162,9 +178,9 @@ void SystemCoreClockUpdate(void) {
       SystemCoreClock = HSE_VALUE;
       break;
     case 0x08:
-      pllmull = RCC->CFGR0 & RCC_PLLMULL;
+      pllmull   = RCC->CFGR0 & RCC_PLLMULL;
       pllsource = RCC->CFGR0 & RCC_PLLSRC;
-      pllmull = (pllmull >> 18) + 2;
+      pllmull   = (pllmull >> 18) + 2;
 
       if (pllmull == 17) pllmull = 18;
 
@@ -652,10 +668,10 @@ static void SetSysClockTo144_HSE(void) {
     /* PCLK2 = HCLK */
     RCC->CFGR0 |= (uint32_t)RCC_PPRE2_DIV1;
     /* PCLK1 = HCLK */
-    RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV2; // Для 36MHz SPI
+    RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV2;  // Для 36MHz SPI
     // RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV1; // Для 72MHz SPI
-    
-    RCC->CFGR0 |= (uint32_t)RCC_ADCPRE_DIV8; // ADCCLK = 18MHz
+
+    RCC->CFGR0 |= (uint32_t)RCC_ADCPRE_DIV8;  // ADCCLK = 18MHz
 
     /*  CH32V20x_D6-PLL configuration: PLLCLK = HSE * 18 = 144 MHz (HSE=8MHZ)
      *  CH32V20x_D8-PLL configuration: PLLCLK = HSE/4 * 18 = 144 MHz (HSE=32MHZ)
