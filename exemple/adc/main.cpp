@@ -7,7 +7,7 @@ LCD lcd;
 constexpr int ADC_CH  = 3;  // Номер канала ADC
 constexpr int ADC_MAX = 1 << ADC::DEPTH;
 constexpr int ADC_DIV = ((ADC_MAX << 1) / lcd.max_x());
-constexpr int speed   = 10;
+constexpr int speed   = 5;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -18,23 +18,10 @@ constexpr int speed   = 10;
 
 void ADC_Function_Init(void) {
   ADC_InitTypeDef ADC_InitStructure   = {0};
-  GPIO_InitTypeDef GPIO_InitStructure = {0};
 
-  RCC_APB2PeriphClockCmd(ADC_GPIO_CLOCK, ENABLE);
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
-
-  // Determines clock for ADC.
-  // At PCLK2 = 48MHz, ADCCLOCK = PCLK2 / 8 = 6MHz
-  RCC_ADCCLKConfig(RCC_PCLK2_Div8);
-
-  GPIO_InitStructure.GPIO_Pin  = ADC_GPIO_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
-  GPIO_Init(ADC_GPIO_BANK, &GPIO_InitStructure);
-
-  ADC_DeInit(ADC1);
   ADC_InitStructure.ADC_Mode               = ADC_Mode_Independent;
   ADC_InitStructure.ADC_ScanConvMode       = DISABLE;
-  ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
   ADC_InitStructure.ADC_ExternalTrigConv   = ADC_ExternalTrigConv_None;
   ADC_InitStructure.ADC_DataAlign          = ADC_DataAlign_Right;
   ADC_InitStructure.ADC_NbrOfChannel       = 1;
@@ -42,16 +29,14 @@ void ADC_Function_Init(void) {
 
   ADC_Cmd(ADC1, ENABLE);
 
-  ADC_BufferCmd(ADC1, ENABLE);  // enable buffer
-}
+  // ADC_BufferCmd(ADC1, ENABLE);  // enable buffer
 
-u16 Get_ADC_Val(u8 ch) {
-  u16 val = 0;
-  ADC_RegularChannelConfig(ADC1, ch, 1, ADC_SampleTime_13Cycles5);
+
+
+  ADC_RegularChannelConfig(ADC1, ADC_CH, 1, ADC_SampleTime_13Cycles5);
   ADC_SoftwareStartConvCmd(ADC1, ENABLE);
-  while (!ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC));
-  val = ADC_GetConversionValue(ADC1);
-  return val;
+
+
 }
 
 
@@ -61,9 +46,10 @@ int main(void) {
   lcd.init();
   lcd.font(sans_24, 0, 0);
 
+    ADC_IN3(INA);
+
   ADC_Function_Init();
   /*
-    ADC_IN3(INA);
     ADC1->CTLR2 = ADC_ADON;
     ADC1->RSQR1 = 0;
     ADC1->RSQR3 = ADC_CH;
@@ -85,7 +71,8 @@ int main(void) {
   lcd.area(xx - 1, 0, xx - 1, lcd.max_y(), RGB(32, 32, 255));
 
   while (true) {
-    uint16_t kk = Get_ADC_Val(ADC_CH) / ADC_DIV;
+    delay_us(200);
+    uint16_t kk = ADC_GetConversionValue(ADC1) / ADC_DIV;
     // uint16_t kk = ADC::value() / ADC_DIV;
     uint16_t y  = x % (lcd.max_y() + 1);
 
