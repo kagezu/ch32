@@ -8,16 +8,34 @@ constexpr int ADC_CH  = 3;  // Номер канала ADC
 constexpr int ADC_MAX = 1 << ADC::DEPTH;
 constexpr int ADC_DIV = ((ADC_MAX << 1) / lcd.max_x());
 constexpr int speed   = 5;
+// int speed             = 5;
 
 ///////////////////////////////////////////////////////////////////////////////
 
+Pin<PA, 0> EN_A;
+Pin<PA, 1> EN_B;
+Pin<PA, 2> USER_SW;
+
+void init_encoder() {
+  USER_SW.init(GP_VCC);
+  EN_A.init(GP_VCC);
+  EN_B.init(GP_VCC);
+
+  tim2.TOP(500);
+  tim2.enable(1);
+  tim2.enable(2);
+  tim2.encoder();
+  tim2.enable();
+  TIM2->CNT = 200;
+}
 
 int main(void) {
+  init_encoder();
   lcd.init();
   lcd.font(sans_24, 0, 0);
 
   ADC::init(ADC_CH);
-  ADC::delay(200);
+  ADC::delay(10);
   ADC::start();
   // ADC::gain(2);
 
@@ -32,7 +50,7 @@ int main(void) {
   lcd.area(xx - 1, 0, xx - 1, lcd.max_y(), RGB(32, 32, 255));
 
   while (true) {
-    delay_us(180);
+    delay_us(tim2.CNT());
     uint16_t kk = ADC::value() / ADC_DIV;
     uint16_t y  = x % (lcd.max_y() + 1);
 
