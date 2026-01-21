@@ -1,4 +1,4 @@
-// #include "macros/attribute.h"
+// #include "attribute.h"
 #pragma once
 
 // Сообщить компилятору, что структура должна быть максимально упакована,
