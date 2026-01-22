@@ -56,7 +56,8 @@ void print_info() {
     VScale.get_item<int>(),
     VType.get_item<char *>());
   lcd.at(lcd.max_x(), 0);
-  lcd.printf("\b\b\b\b\b\b\b\b\bFPS %.1.2q ", fps);
+  // lcd.printf("\b\b\b\b\b\b\b\b\bFPS %.1.2q ", fps);
+  lcd.printf("\b\b\b\b\b\b\b\b\bFPS %u ", tim2.CNT());
   lcd.printf("\f\n");
   menu.print(&lcd);
   lcd.prints("             ");
@@ -177,7 +178,7 @@ void sample(uint32_t time) {
   // dma.start();  // Запускаем передачу данных из АЦП в буфер
   // dma.wait();   // Ожидаем завершения работы DMA
   for (int i = 0; i < sizeof(buffer) >> 1; i++)
-    buffer[i] = (u16)ADC::value();
+    {buffer[i] = (u16)ADC::value(); delay_us(1);}
   ADC::stop();  // Останавливаем преобразование АЦП
   // sei();
 }
@@ -186,6 +187,7 @@ void sample(uint32_t time) {
 
 int main(void) {
   init();
+  enc.init();
   lcd.init();
   if (lcd.max_x() < 320) lcd.font(system_5x7, 1, 3);
   else lcd.font(arial_14, 1, 3);
@@ -296,8 +298,8 @@ int main(void) {
       }
     }
 
-    int inc = enc.scan();
-    if (inc) menu.next(inc);
+    // int inc = enc.scan();
+    // if (inc) menu.next(inc);
     count++;
     timer++;
 
