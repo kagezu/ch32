@@ -1,9 +1,10 @@
 #pragma once
-#include "mik32.h"
+#include "core.h"
 
 // Каналы DMA
 
-constexpr int DMA_MEM = 0;
+constexpr int DMA_PERIF = 0;
+constexpr int DMA_MEM   = 1;
 
 // ADC
 constexpr int DMA_ADC1 = 1;
@@ -56,80 +57,77 @@ constexpr int DMA_TIM4_CH2 = 4;
 constexpr int DMA_TIM4_CH3 = 5;
 constexpr int DMA_TIM4_UP  = 7;
 
-constexpr int DMA_L = 0;
-constexpr int DMA_M = 1;
-constexpr int DMA_H = 2;
+constexpr int DMA_L  = 0;
+constexpr int DMA_M  = 1;
+constexpr int DMA_H  = 2;
 constexpr int DMA_VH = 3;
 
-template <const int N>
+// Channelx Configuration Register
+constexpr int DMA_MEM2MEM = 14;
+constexpr int DMA_PL      = 12;
+constexpr int DMA_MSIZE   = 10;
+constexpr int DMA_PSIZE   = 8;
+constexpr int DMA_MINC    = 7;
+constexpr int DMA_PINC    = 6;
+constexpr int DMA_CIRC    = 5;
+
+constexpr int DMA_DIR  = 16;
+constexpr int DMA_TEIE = 8;
+constexpr int DMA_HTIE = 4;
+constexpr int DMA_TCIE = 2;
+constexpr int DMA_EN   = 1;
+
+template <const int N, const int P>
 class DMA {
 protected:
   uint32_t config;
 
-  enum : int { BYTE,
-               HALF,
-               WORD };
-  enum : int { IMM,
-               INC };
-  enum : int { NONE,
-               ACK };
+  enum : int {
+    BYTE  = 0,
+    HALF  = 1,
+    WORD  = 2,
+    INC   = 1,
+    GIF   = 1,  // Появление любого флага
+    TCIF  = 2,  // Передача завершина
+    HTIF  = 4,  // Половина передачи
+    TEIF  = 8,  // Ошибка канала
+    ALLIF = 15  // Все / любой
+  };
 
 public:
   constexpr DMA_Channel_TypeDef *CH() { return (DMA_Channel_TypeDef *)(AHBPERIPH_BASE + 0x0008 + (N - 1) * 20); }
-  constexpr u32 DMA_READY() { return (u32)1 << (N * 4 - 3); }
-
-  constexpr static uint32_t read(int perf, int brust = 0, int even = BYTE, int inc = IMM, int ack = NONE) {
-    return (perf == DMA_MEM
-              ? DMA_CH_CFG_READ_MODE_MEMORY_M         // Установить режим памяти
-              : (perf << DMA_CH_CFG_READ_REQUEST_S))  // Установить периферийную линию
-           | (even << DMA_CH_CFG_READ_SIZE_S)         // Разрядность данных
-           | (brust << DMA_CH_CFG_READ_BURST_SIZE_S)  // Установить размер пакета
-           | (inc << DMA_CH_CFG_READ_INCREMENT_S)     // Установить инкремент
-           | (ack << DMA_CH_CFG_READ_ACK_EN_S);       // Установить подтверждение
-  }
-
-  constexpr static uint32_t write(int perf, int brust = 0, int even = BYTE, int inc = IMM, int ack = NONE) {
-    return (perf == DMA_MEM
-              ? DMA_CH_CFG_WRITE_MODE_MEMORY_M         // Установить режим памяти
-              : (perf << DMA_CH_CFG_WRITE_REQUEST_S))  // Установить периферийную линию
-           | (even << DMA_CH_CFG_WRITE_SIZE_S)         // Разрядность данных
-           | (brust << DMA_CH_CFG_WRITE_BURST_SIZE_S)  // Установить размер пакета
-           | (inc << DMA_CH_CFG_WRITE_INCREMENT_S)     // Установить инкремент
-           | (ack << DMA_CH_CFG_WRITE_ACK_EN_S);       // Установить подтверждение
-  }
+  constexpr u32 INTF(uc32 flag = ALLIF) { return flag << ((N - 1) << 2); }
+  constexpr static uint32_t perif(int size, int inc = 0) { return (size << DMA_PSIZE) | (inc << DMA_PINC); }
+  constexpr static uint32_t mem(int size, int inc = 0) { return (size << DMA_MSIZE) | (inc << DMA_MINC); }
 
   // Начать работу
-  INLINE void start() { CH()->CFG = config; }
+  INLINE void start() {
+    DMA1->INTFCR = INTF(ALLIF);
+    CH()->CFGR   = config;
+    CH()->CFGR   = config | DMA_EN;
+  }
+
   // Сбросить канал
-  INLINE void reset() { CH()->CFG = 0; }
+  INLINE void reset() {
+    CH()->CFGR   = 0;
+    DMA1->INTFCR = INTF(ALLIF);
+  }
 
   // Ожидание завершения работы канала
-  INLINE void wait() {
-    while (!(DMA1->INTFR & DMA_READY())) delay_us(10);
-    DMA1->INTFCR = DMA_READY();
-  }
-  INLINE bool is_active() { return !(DMA1->INTFR & DMA_READY()); }
+  INLINE void wait() { while (!(DMA1->INTFR & INTF(TCIF | TEIF))); }
+  INLINE bool is_active() { return !CH()->CNTR && CH()->CFGR & DMA_EN; }
 
   // Установка данных
-  template <typename D, typename S>
-  INLINE void setup(D dst, S src, uint32_t len) {
-    CH()->DST = (uint32_t)dst;
-    CH()->SRC = (uint32_t)src;
-    CH()->LEN = len - 1;
+  template <typename PADD, typename MADD>
+  INLINE void setup(PADD padd, MADD madd, uint32_t len) {
+    CH()->PADDR = (uint32_t)padd;
+    CH()->MADDR = (uint32_t)madd;
+    CH()->CNTR  = len;
   }
 
-  // mem -> gpio
-  // void memout(uint32_t dst, uint32_t src, uint32_t len)
-  // {
-  // setup(dst, src, len);
-  // read(DMA::MEM, WORD, HALF, INC, NONE);
-  // write(DMA::MEM, HALF, HALF, IMM, NONE);
-  // DMA_CH->CFG = config;
-  // }
-
   // adc -> mem
-  void adc(const int line, void *dst, uint32_t len) {
-    setup(dst, (uint32_t)&ANALOG_REG->ADC_VALUE, (len >> 2) << 2);
-    config = DMA_CH_CFG_ENABLE_M | (P << DMA_CH_CFG_PRIOR_S) | read(line, HALF, HALF, IMM, ACK) | write(DMA_MEM, WORD, WORD, INC);
+  void adc(void *dst, uint32_t len) {
+    setup(ADC1->RDATAR, dst, len);
+    config = perif(WORD) | mem(HALF, INC) | P << DMA_PL;
   }
 };
