@@ -103,7 +103,7 @@ public:
   // Начать работу
   INLINE void start() {
     DMA1->INTFCR = INTF(ALLIF);
-    CH()->CFGR   = config;
+    // CH()->CFGR   = config;
     CH()->CFGR   = config | DMA_EN;
   }
 
@@ -114,7 +114,7 @@ public:
   }
 
   // Ожидание завершения работы канала
-  INLINE void wait() { while (!(DMA1->INTFR & INTF(TCIF | TEIF))); }
+  INLINE void wait() { while ((DMA1->INTFR & INTF(TCIF))); }
   INLINE bool is_active() { return !CH()->CNTR && CH()->CFGR & DMA_EN; }
 
   // Установка данных

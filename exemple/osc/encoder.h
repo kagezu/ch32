@@ -17,12 +17,12 @@ public:
     EN_B.init(GP_VCC);
     USER_SW.init(GP_VCC);
 
-    tim2.TOP(0xff);
-    tim2.enable(1);
-    tim2.enable(2);
-    tim2.encoder();
-    tim2.enable();
-    // tim2.CNT(0);
+  tim2.TOP(0xffff);
+  tim2.enable(1);
+  tim2.enable(2);
+  tim2.encoder();
+  tim2.enable();
+  tim2.CNT(0);
   }
 
   bool is_push() {

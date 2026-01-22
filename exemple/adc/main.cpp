@@ -17,9 +17,9 @@ Pin<PA, 1> EN_B;
 Pin<PA, 2> USER_SW;
 
 void init_encoder() {
-  USER_SW.init(GP_VCC);
   EN_A.init(GP_VCC);
   EN_B.init(GP_VCC);
+  USER_SW.init(GP_VCC);
 
   tim2.TOP(500);
   tim2.enable(1);

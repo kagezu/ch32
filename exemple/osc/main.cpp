@@ -7,7 +7,7 @@
 #include "encoder.h"
 #include "fft.h"
 
-constexpr int ADC_CH  = 0;    // Номер канала ADC
+constexpr int ADC_CH  = 3;    // Номер канала ADC
 constexpr int INT_FQ  = 200;  // Hz опрос энкодера
 constexpr int INFO_FQ = 3;    // Hz обновление текста
 constexpr int Lp      = 8;    // Узловых точек для интерполяции Лагранжа (чётная)
@@ -56,8 +56,7 @@ void print_info() {
     VScale.get_item<int>(),
     VType.get_item<char *>());
   lcd.at(lcd.max_x(), 0);
-  // lcd.printf("\b\b\b\b\b\b\b\b\bFPS %.1.2q ", fps);
-  lcd.printf("\b\b\b\b\b\b\b\b\bFPS %u ", tim2.CNT());
+  lcd.printf("\b\b\b\b\b\b\b\b\bFPS %.1.2q ", fps);
   lcd.printf("\f\n");
   menu.print(&lcd);
   lcd.prints("             ");
@@ -162,7 +161,6 @@ void init() {
 
   // Таймер для расчёта FPS
   // T32_2_PS; T32_2_EN;
-
 }
 
 //////////////////////////////////  АЦП  //////////////////////////////////////
@@ -175,10 +173,13 @@ void sample(uint32_t time) {
   ADC::delay(samp);  // Устанавливаем время выборки АЦП
   ADC::start();      // Запускаем непрерывное преобразование АЦП
   // if (time < 64) cli(); // Если между выборками меньше 2х микросекунд, отключаем прерывания
-  // dma.start();  // Запускаем передачу данных из АЦП в буфер
-  // dma.wait();   // Ожидаем завершения работы DMA
-  for (int i = 0; i < sizeof(buffer) >> 1; i++)
-    {buffer[i] = (u16)ADC::value(); delay_us(1);}
+
+  dma.adc(buffer, sizeof(buffer) >> 1);
+  dma.start();  // Запускаем передачу данных из АЦП в буфер
+  dma.wait();   // Ожидаем завершения работы DMA
+  // dma.reset();
+  // for (int i = 0; i < sizeof(buffer) >> 1; i++)
+  //   {buffer[i] = (u16)ADC::value(); ADC::wait();}
   ADC::stop();  // Останавливаем преобразование АЦП
   // sei();
 }
@@ -187,13 +188,13 @@ void sample(uint32_t time) {
 
 int main(void) {
   init();
-  enc.init();
   lcd.init();
+  enc.init();
   if (lcd.max_x() < 320) lcd.font(system_5x7, 1, 3);
   else lcd.font(arial_14, 1, 3);
   fft.init();
   ADC::init(ADC_CH);
-  dma.adc(buffer, sizeof(buffer));
+  // dma.adc(buffer, sizeof(buffer));
 
   volatile int mode = -1;
   int sl            = 0;
@@ -298,8 +299,8 @@ int main(void) {
       }
     }
 
-    // int inc = enc.scan();
-    // if (inc) menu.next(inc);
+    int inc = enc.scan();
+    if (inc) menu.next(inc);
     count++;
     timer++;
 
