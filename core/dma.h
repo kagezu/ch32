@@ -103,7 +103,7 @@ public:
   // Начать работу
   INLINE void start() {
     DMA1->INTFCR = INTF(ALLIF);
-    // CH()->CFGR   = config;
+    CH()->CFGR   = config;
     CH()->CFGR   = config | DMA_EN;
   }
 

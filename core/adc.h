@@ -96,6 +96,7 @@ public:
     ADC2->RSQR3 = ch;
   }
 
+  INLINE static void dma() { ADC1->CTLR2 |= ADC_DMA; }
   INLINE static void gain(u32 gain) { ADC1->CTLR1 = ADC_BUFEN | (gain << ADC_GAIN_S); }
   INLINE static void single() { ADC1->CTLR2 |= ADC_ADON | ADC_SWSTART; }
   INLINE static void start() { ADC1->CTLR2 |= ADC_CONT | ADC_ADON | ADC_SWSTART; }
