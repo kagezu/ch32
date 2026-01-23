@@ -45,6 +45,10 @@ void transform_to_display(short in[], short out[], int32_t scale, int32_t offset
 
 ///////////////////////////////////////////////////////////////////////////////
 
+void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+
+///////////////////////////////////////////////////////////////////////////////
+
 // Вывод на экран текстовой информации
 void print_info() {
   lcd.viewport();
@@ -153,8 +157,11 @@ void init() {
   // RTC->REG[15] = RTC_REG_SAVED;
 
   // Сканирование энкодера по таймеру
-  // T32_0_PS; T32_0_FQ(INT_FQ);
-  // T32_0_OVF; T32_0_IS; T32_0_EN;//EPIC_TIMER32_0_INDEX
+  tim4.PSC(14399);               // tick = 0.1 ms
+  tim4.TOP(10000 / INT_FQ - 1);  // Hz
+  tim4.int_ovf();
+  tim4.enable();
+  tim4.cont();
 
   // Таймер для работы DMA с АЦП
   // T32_1_PS; T32_1_EN;
@@ -300,10 +307,10 @@ int main(void) {
       }
     }
 
-    int inc = enc.scan();
-    if (inc) menu.next(inc);
-    count++;
-    timer++;
+    // int inc = enc.scan();
+    // if (inc) menu.next(inc);
+    // count++;
+    // timer++;
 
     if (enc.is_push()) {
       menu.select();
@@ -316,12 +323,11 @@ int main(void) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// INT_HANDLER
-// {
-//   int inc = enc.scan();
-//   if (inc) menu.next(inc);
-//   count++;
-//   timer++;
-//   T32_0_IC;
-//   EPIC_C;
-// }
+void TIM4_IRQHandler(void) {
+  while(1);
+  int inc = enc.scan();
+  if (inc) menu.next(inc);
+  count++;
+  timer++;
+  tim4.int_clear();
+}
