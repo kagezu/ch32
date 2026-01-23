@@ -45,7 +45,7 @@ void transform_to_display(short in[], short out[], int32_t scale, int32_t offset
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+extern "C" void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -162,6 +162,8 @@ void init() {
   tim4.int_ovf();
   tim4.enable();
   tim4.cont();
+
+  NVIC_EnableIRQ(TIM4_IRQn);
 
   // Таймер для работы DMA с АЦП
   // T32_1_PS; T32_1_EN;
@@ -324,7 +326,6 @@ int main(void) {
 ///////////////////////////////////////////////////////////////////////////////
 
 void TIM4_IRQHandler(void) {
-  while(1);
   int inc = enc.scan();
   if (inc) menu.next(inc);
   count++;

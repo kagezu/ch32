@@ -170,7 +170,7 @@ public:
 
   INLINE void int_ovf(const bool on = true) {
     if(on) T_16(N)->DMAINTENR |=TIM_UIF;
-    else   T_16(N)->DMAINTENR &=~TIM_UIF;
+    else   T_16(N)->DMAINTENR &=(u16)~TIM_UIF;
   }
 
   /*
