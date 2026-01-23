@@ -1,8 +1,8 @@
 #pragma once
 
-#ifdef __cplusplus
- extern "C" {
-#endif 
+// #ifdef __cplusplus
+//  extern "C" {
+// #endif 
 
 #define STK_SWIE  (1 << 31)  //
 #define STK_INIT  (1 << 5)   // обновлять счётчик при старте
@@ -23,6 +23,6 @@
 
 
 
-#ifdef __cplusplus
-}
-#endif
+// #ifdef __cplusplus
+// }
+// #endif

@@ -45,7 +45,10 @@ void transform_to_display(short in[], short out[], int32_t scale, int32_t offset
 
 ///////////////////////////////////////////////////////////////////////////////
 
-extern "C" void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+extern "C" {
+void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void SysTick_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -156,42 +159,41 @@ void init() {
   //   menu.load((int *)RTC->REG);
   // RTC->REG[15] = RTC_REG_SAVED;
 
-  // Сканирование энкодера по таймеру
-  tim4.PSC(14399);               // tick = 0.1 ms
-  tim4.TOP(10000 / INT_FQ - 1);  // Hz
-  tim4.int_ovf();
-  tim4.enable();
+  // Таймер для работы с АЦП
+  tim4.PSC(0);
   tim4.cont();
+  tim4.int_ovf();
 
-  NVIC_EnableIRQ(TIM4_IRQn);
+
+  // sysTick Сканирование энкодера по таймеру
+  STK_CMP  = F_CPU / INT_FQ - 1;
+  STK_CTRL = STK_STE | STK_STCLK | STK_STRE | STK_STIE;
+  NVIC_EnableIRQ(SysTick_IRQn);
 
   // Таймер для работы DMA с АЦП
   // T32_1_PS; T32_1_EN;
-
-  // Таймер для расчёта FPS
-  // T32_2_PS; T32_2_EN;
 }
 
 //////////////////////////////////  АЦП  //////////////////////////////////////
 
 // Заполнение буфера данными из АЦП
 void sample(uint32_t time) {
-  uint32_t samp = ADC::cycle(time);  // Допустимое значение для АЦП
-  // T32_1_TOP(time - 1);  // Количество тактов между семплами
-  // T32_1_C;              // Обнуляем таймер, на случай если он уже выше TOP
-  ADC::delay(samp);  // Устанавливаем время выборки АЦП
+
+  tim4.TOP(time - 1);  // Количество тактов между семплами
+  tim4.enable();
+  
+  ADC::delay(time);  // Устанавливаем время выборки АЦП
   ADC::dma();
-  ADC::start();      // Запускаем непрерывное преобразование АЦП
-  // if (time < 64) cli(); // Если между выборками меньше 2х микросекунд, отключаем прерывания
 
   dma.adc(buffer, sizeof(buffer) >> 1);
-  dma.start();  // Запускаем передачу данных из АЦП в буфер
-  dma.wait();   // Ожидаем завершения работы DMA
-  // dma.reset();
-  // for (int i = 0; i < sizeof(buffer) >> 1; i++)
-  //   {buffer[i] = (u16)ADC::value(); ADC::wait();}
-  ADC::stop();  // Останавливаем преобразование АЦП
-  // sei();
+  dma.start();         // Запускаем передачу данных из АЦП в буфер
+
+
+  NVIC_EnableIRQ(TIM4_IRQn);
+
+  dma.wait();  // Ожидаем завершения работы DMA
+
+  NVIC_DisableIRQ(TIM4_IRQn);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -210,7 +212,7 @@ int main(void) {
   int sl            = 0;
 
   while (true) {
-    const int32_t t_seg = (int32_t)FqScale.get_item<int>() << 5;       // Умножаем микросекунды на 32 MHz. [такты на сегмент]
+    const int32_t t_seg = (int32_t)FqScale.get_item<int>() * 144;       // Умножаем микросекунды на 144 MHz. [такты на сегмент]
     int32_t scale       = (ADC::AREF * SEG) / VScale.get_item<int>();  // Масштабирование по напряжению [пикселей на весь диапазон]
     fps                 = fps - (fps >> 2) + (INT_FQ / timer);         // Расчёт FPS
     timer               = 0;
@@ -326,9 +328,14 @@ int main(void) {
 ///////////////////////////////////////////////////////////////////////////////
 
 void TIM4_IRQHandler(void) {
+  ADC::single();
+  tim4.int_clear();
+}
+
+void SysTick_Handler(void) {
   int inc = enc.scan();
   if (inc) menu.next(inc);
   count++;
   timer++;
-  tim4.int_clear();
+  STK_SR = 0;
 }
