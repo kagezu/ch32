@@ -9,14 +9,14 @@
 
 constexpr int ADC_CH  = 3;    // Номер канала ADC
 constexpr int INT_FQ  = 200;  // Hz опрос энкодера
-constexpr int INFO_FQ = 3;    // Hz обновление текста
+constexpr int INFO_FQ = 5;    // Hz обновление текста
 constexpr int Lp      = 8;    // Узловых точек для интерполяции Лагранжа (чётная)
 
 // Дисплей
 LCD lcd;
 constexpr int BORDER_TOP    = 32;                                                             // Отступ от верха экрана
 constexpr int BORDER_BOTTOM = 1;                                                              // Отступ от низа экрана
-constexpr int SEG           = 16;                                                             // Шаг сетки
+constexpr int SEG           = 25;                                                             // Шаг сетки
 constexpr int POINTES       = ((lcd.max_x() + 2));                                            // Количество точек для отображения
 constexpr int SAMPLES       = POINTES * 3;                                                    // Количество измерений для анализа
 constexpr int END_LEN       = Lp + 2;                                                         // Резерв для интерполятора
@@ -48,6 +48,7 @@ void transform_to_display(short in[], short out[], int32_t scale, int32_t offset
 extern "C" {
 void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void SysTick_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void DMA1_Channel1_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -117,6 +118,7 @@ void border_draw() {
 // Сетка
 void axis_draw() {
   lcd.viewport(&view);
+  // lcd.fill(&view, Black);
   lcd.color(Teal);
 
   lcd.h_line((lcd.max_x() >> 1), BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
@@ -164,14 +166,28 @@ void init() {
   tim4.cont();
   tim4.int_ovf();
 
-
   // sysTick Сканирование энкодера по таймеру
   STK_CMP  = F_CPU / INT_FQ - 1;
   STK_CTRL = STK_STE | STK_STCLK | STK_STRE | STK_STIE;
-  NVIC_EnableIRQ(SysTick_IRQn);
 
-  // Таймер для работы DMA с АЦП
-  // T32_1_PS; T32_1_EN;
+  // ADC DMA
+  ADC::init(ADC_CH);
+  ADC::dma();
+  dma.adc(buffer, sizeof(buffer) >> 1);
+  dma.int_coml();
+
+  // LCD
+  lcd.init();
+  if (lcd.max_x() < 320) lcd.font(system_5x7, 1, 3);
+  else lcd.font(arial_14, 1, 3);
+
+  //
+  fft.init();
+  enc.init();
+
+  NVIC_EnableIRQ(SysTick_IRQn);
+  NVIC_EnableIRQ(TIM4_IRQn);
+  NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
 //////////////////////////////////  АЦП  //////////////////////////////////////
@@ -181,38 +197,22 @@ void sample(uint32_t time) {
 
   tim4.TOP(time - 1);  // Количество тактов между семплами
   tim4.enable();
-  
   ADC::delay(time);  // Устанавливаем время выборки АЦП
-  ADC::dma();
-
-  dma.adc(buffer, sizeof(buffer) >> 1);
-  dma.start();         // Запускаем передачу данных из АЦП в буфер
-
-
-  NVIC_EnableIRQ(TIM4_IRQn);
-
-  dma.wait();  // Ожидаем завершения работы DMA
-
-  NVIC_DisableIRQ(TIM4_IRQn);
+  dma.start();  // Запускаем передачу данных из АЦП в буфер
+  while (dma.is_active());  // Ожидаем завершения работы DMA
+  tim4.disable();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 int main(void) {
   init();
-  lcd.init();
-  enc.init();
-  if (lcd.max_x() < 320) lcd.font(system_5x7, 1, 3);
-  else lcd.font(arial_14, 1, 3);
-  fft.init();
-  ADC::init(ADC_CH);
-  // dma.adc(buffer, sizeof(buffer));
 
   volatile int mode = -1;
   int sl            = 0;
 
   while (true) {
-    const int32_t t_seg = (int32_t)FqScale.get_item<int>() * 144;       // Умножаем микросекунды на 144 MHz. [такты на сегмент]
+    const int32_t t_seg = (int32_t)FqScale.get_item<int>() * 144;      // Умножаем микросекунды на 144 MHz. [такты на сегмент]
     int32_t scale       = (ADC::AREF * SEG) / VScale.get_item<int>();  // Масштабирование по напряжению [пикселей на весь диапазон]
     fps                 = fps - (fps >> 2) + (INT_FQ / timer);         // Расчёт FPS
     timer               = 0;
@@ -311,11 +311,6 @@ int main(void) {
       }
     }
 
-    // int inc = enc.scan();
-    // if (inc) menu.next(inc);
-    // count++;
-    // timer++;
-
     if (enc.is_push()) {
       menu.select();
       if (menu.value != MODE_SPEC) print_info();
@@ -330,6 +325,10 @@ int main(void) {
 void TIM4_IRQHandler(void) {
   ADC::single();
   tim4.int_clear();
+}
+
+void DMA1_Channel1_IRQHandler(void) {
+  dma.reset();
 }
 
 void SysTick_Handler(void) {

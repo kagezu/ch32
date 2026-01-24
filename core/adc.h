@@ -16,17 +16,16 @@
 
 #define ADC_BUFEN     ((uint32_t)0x04000000)
 
-static const uint16_t AdcSmpclk[] = {3 + 22, 15 + 22, 27 + 22, 57 + 22, 83 + 22, 111 + 22, 143 + 22, 479 + 22};
+// static const uint16_t AdcSmpclk[] = {3 + 22, 15 + 22, 27 + 22, 57 + 22, 83 + 22, 111 + 22, 143 + 22, 479 + 22};
+static const uint16_t AdcSmpclk[] = {13, 19, 25, 40, 53, 67, 83, 251};
 
 class ADC {
 private:
-  static uint8_t ch1;
+  static uint8_t ch1, pre;
 
 public:
-  // constexpr static int SAH_MIN = 0;  // Минимальное время выборки
-  // constexpr static int SAH_MAX = 63; // Максимальное время выборки
   constexpr static int DEPTH = 12;  // Разрядность АЦП
-  // constexpr static int TIME = 14;    // Время преобразования
+  // constexpr static int TIME = 11;    // Время преобразования
   constexpr static int AREF  = 3300;  // Опорное напряжение в милливольтах
 
 public:
@@ -43,6 +42,8 @@ public:
       case 7: ADC_IN7(INA); break;
     }
     chanel(ch);
+    prescale(8);
+
 
     // ADC2->CTLR1 =
     //   (0b00 << ADC_GAIN_S) |  // Усиление 1, 4, 16, 64
@@ -53,9 +54,6 @@ public:
     ADC2->CTLR2 =
       ADC_EXTTRIG |                // External trigger
       ADC_ExternalTrigConv_None |  // Software trigger
-      // ADC_ALIGN | // Left
-      // ADC_DMA |
-      // ADC_CONT |
       ADC_ADON;
 
     // ADC1->CTLR1 =
@@ -67,22 +65,22 @@ public:
     ADC1->CTLR2 =
       ADC_EXTTRIG |                // External trigger
       ADC_ExternalTrigConv_None |  // Software trigger
-      // ADC_ALIGN | // Left
-      // ADC_DMA |
-      // ADC_CONT |
       ADC_ADON;
+    // ADC_ALIGN | // Left
+    // ADC_DMA |
+    // ADC_CONT |
   }
 
   // Преобразует число тактов в допустимое SMP
   static int smp(int32_t tick) {
     uint8_t smp = 0;
-    while (smp < 7 && tick > AdcSmpclk[smp++]);
+    while (smp < 7 && tick > (pre * AdcSmpclk[smp++]));
     smp--;
     return smp;
   }
 
   static int cycle(int32_t tick) {
-    return AdcSmpclk[smp(tick)];
+    return pre * AdcSmpclk[smp(tick)];
   }
 
   INLINE static void delay(int time) {
@@ -94,6 +92,18 @@ public:
     ch1         = ch;
     ADC1->RSQR3 = ch;
     ADC2->RSQR3 = ch;
+  }
+
+  INLINE static void prescale(const u8 div) {
+    u32 cfg = RCC->CFGR0 & ~RCC_ADCPRE;
+    switch (div) {
+      case 2: RCC->CFGR0 = cfg | RCC_ADCPRE_DIV2; break;
+      case 4: RCC->CFGR0 = cfg | RCC_ADCPRE_DIV4; break;
+      case 6: RCC->CFGR0 = cfg | RCC_ADCPRE_DIV6; break;
+      case 8: RCC->CFGR0 = cfg | RCC_ADCPRE_DIV8; break;
+      default: return;
+    }
+    pre = div;
   }
 
   INLINE static void dma() { ADC1->CTLR2 |= ADC_DMA; }

@@ -18,12 +18,12 @@ const char *_vt[] = { "AC", "DC" };
 const char *_ft[] = { "Off", "Sum" };
 const char *_tt[] = { "Front", "Cutoff", "Maximum" };
 
-ADD_MINT(FqScale, "Time", 6, _fq);
-ADD_MINT(VScale, "Voltage", 1, _vsc);
+ADD_MINT(FqScale, "Time", 9, _fq);
+ADD_MINT(VScale, "Voltage", 2, _vsc);
 ADD_MTEXT(VType, "Current", 0, _vt);
 ADD_MVALUE(ZeroLevel, "Setup zero", 0, -200, 200);
 ADD_MTEXT(FType, "Filter", 0, _ft);
-ADD_MTEXT(TType, "Trigger", 0, _tt);
+ADD_MTEXT(TType, "Trigger", 2, _tt);
 ADD_MITEM(MExit, "< < <");
 
 MItem OSC_Menu = { "\bOSC", ListType, 0, 0, 0, 5 , { &MExit, &FqScale, &VScale, &VType, &ZeroLevel, &TType } };

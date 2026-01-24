@@ -135,6 +135,18 @@ void SystemInit(void) {
   SetSysClock();
   SystemCoreClockUpdate();
 
+  // RCC->AHBPCENR = 0  //
+    // | RCC_AHBPeriph_DMA1
+    // | RCC_AHBPeriph_DMA2
+    // | RCC_AHBPeriph_SRAM
+    // | RCC_AHBPeriph_CRC
+    // | RCC_AHBPeriph_FSMC
+    // | RCC_AHBPeriph_RNG
+    // | RCC_AHBPeriph_SDIO
+    // | RCC_AHBPeriph_USBHS
+    // | RCC_AHBPeriph_USBFS
+    // ;
+
   RCC->APB2PCENR =
     // | RCC_APB2Periph_AFIO
     RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB
@@ -150,9 +162,6 @@ void SystemInit(void) {
     // | RCC_APB2Periph_TIM10
     ;
 
-
-  // RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-  // RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 
   // if (F_CPU != SystemCoreClock) SystemError();
 }
@@ -671,8 +680,8 @@ static void SetSysClockTo144_HSE(void) {
     RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV2;  // Для 36MHz SPI
     // RCC->CFGR0 |= (uint32_t)RCC_PPRE1_DIV1; // Для 72MHz SPI
 
-    // RCC->CFGR0 |= (uint32_t)RCC_ADCPRE_DIV8;  // ADCCLK = 18MHz
-    RCC->CFGR0 |= (uint32_t)RCC_ADCPRE_DIV2;  // ADCCLK = 72MHz
+    RCC->CFGR0 |= (uint32_t)RCC_ADCPRE_DIV8;  // ADCCLK = 18MHz
+    // RCC->CFGR0 |= (uint32_t)RCC_ADCPRE_DIV2;  // ADCCLK = 72MHz
 
     /*  CH32V20x_D6-PLL configuration: PLLCLK = HSE * 18 = 144 MHz (HSE=8MHZ)
      *  CH32V20x_D8-PLL configuration: PLLCLK = HSE/4 * 18 = 144 MHz (HSE=32MHZ)

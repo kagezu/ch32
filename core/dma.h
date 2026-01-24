@@ -69,8 +69,8 @@ constexpr int DMA_MSIZE   = 10;
 constexpr int DMA_PSIZE   = 8;
 constexpr int DMA_MINC    = 7;
 constexpr int DMA_PINC    = 6;
-constexpr int DMA_CIRC    = 5;
 
+constexpr int DMA_CIRC = 32;
 constexpr int DMA_DIR  = 16;
 constexpr int DMA_TEIE = 8;
 constexpr int DMA_HTIE = 4;
@@ -100,10 +100,11 @@ public:
   constexpr static uint32_t perif(int size, int inc = 0) { return (size << DMA_PSIZE) | (inc << DMA_PINC); }
   constexpr static uint32_t mem(int size, int inc = 0) { return (size << DMA_MSIZE) | (inc << DMA_MINC); }
 
+  DMA() { RCC->AHBPCENR |= RCC_AHBPeriph_DMA1; }
+
   // Начать работу
   INLINE void start() {
     DMA1->INTFCR = INTF(ALLIF);
-    CH()->CFGR   = config;
     CH()->CFGR   = config | DMA_EN;
   }
 
@@ -114,8 +115,9 @@ public:
   }
 
   // Ожидание завершения работы канала
-  INLINE void wait() { while ((DMA1->INTFR & INTF(TCIF))); }
-  INLINE bool is_active() { return !CH()->CNTR && CH()->CFGR & DMA_EN; }
+  INLINE void wait() { while (!(DMA1->INTFR & INTF(TCIF))); }
+  INLINE bool is_active() { return CH()->CFGR & DMA_EN; }
+  INLINE void int_coml() {config |= DMA_TCIE; }
 
   // Установка данных
   template <typename PADD, typename MADD>
@@ -127,7 +129,7 @@ public:
 
   // adc -> mem
   void adc(void *dst, uint32_t len) {
-    setup(ADC1->RDATAR, dst, len);
-    config = perif(WORD) | mem(HALF, INC) | P << DMA_PL;
+    setup(&ADC1->RDATAR, dst, len);
+    config = perif(WORD) | mem(HALF, INC) | P << DMA_PL | DMA_CIRC;
   }
 };
