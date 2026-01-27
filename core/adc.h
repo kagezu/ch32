@@ -1,36 +1,35 @@
 #pragma once
 #include "core.h"
 
-#define ADC_SMP_0     0  // 1.5
-#define ADC_SMP_1     1  // 7.5
-#define ADC_SMP_2     2  // 13.5
-#define ADC_SMP_3     3  // 28.5
-#define ADC_SMP_4     4  // 41.5
-#define ADC_SMP_5     5  // 55.5
-#define ADC_SMP_6     6  // 71.5
-#define ADC_SMP_7     7  // 239.5
-
 #define ADC_DUALMOD_S 16
 #define ADC_EXTSEL_S  17
 #define ADC_GAIN_S    27
 
-#define ADC_BUFEN     ((uint32_t)0x04000000)
+//  (0b00 << ADC_GAIN_S) |  // Усиление 1, 4, 16, 64
+//  (0b0111 << ADC_DUALMOD_S) |  // Fast mode
+//  (0b1000 << ADC_DUALMOD_S) |  // Slow mode
 
-// static const uint16_t AdcSmpclk[] = {3 + 22, 15 + 22, 27 + 22, 57 + 22, 83 + 22, 111 + 22, 143 + 22, 479 + 22};
-static const uint16_t AdcSmpclk[] = {13, 19, 25, 40, 53, 67, 83, 251};
+extern uint8_t adc_prescale;
+extern const uint16_t AdcSmpclk[];
+// extern const uint16_t PllPrescale[];
+void ADCCLK(u8 div);
 
+template <const int N>
 class ADC {
 private:
-  static uint8_t ch1, pre;
+  uint8_t chanel;
+
+private:
+  constexpr ADC_TypeDef *ADCx() { return (ADC_TypeDef *)(ADC1_BASE + (N - 1) * 0x0400); }
 
 public:
-  constexpr static int DEPTH = 12;  // Разрядность АЦП
-  // constexpr static int TIME = 11;    // Время преобразования
+  constexpr static int DEPTH = 12;    // Разрядность АЦП
   constexpr static int AREF  = 3300;  // Опорное напряжение в милливольтах
 
 public:
-  // template<const int ch>
-  INLINE static void init(const int ch) {
+  ADC(const int ch) {
+    chanel = ch;
+    if (!adc_prescale) ADCCLK(8);
     switch (ch) {
       case 0: ADC_IN0(INA); break;
       case 1: ADC_IN1(INA); break;
@@ -41,76 +40,35 @@ public:
       case 6: ADC_IN6(INA); break;
       case 7: ADC_IN7(INA); break;
     }
-    chanel(ch);
-    prescale(8);
-
-
-    // ADC2->CTLR1 =
-    //   (0b00 << ADC_GAIN_S) |  // Усиление 1, 4, 16, 64
-    //   ADC_BUFEN |
-    //   // (0b0111 << ADC_DUALMOD_S) |  // Fast mode
-    //   // (0b1000 << ADC_DUALMOD_S) |  // Slow mode
-    //   0;
-    ADC2->CTLR2 =
+    ADCx()->RSQR3 = ch;
+    ADCx()->CTLR1 = ADC_OutputBuffer_Enable;
+    ADCx()->CTLR2 =
       ADC_EXTTRIG |                // External trigger
       ADC_ExternalTrigConv_None |  // Software trigger
       ADC_ADON;
-
-    // ADC1->CTLR1 =
-    //   (0b01 << ADC_GAIN_S) |  // Усиление 1, 4, 16, 64
-    //   ADC_BUFEN |
-    //   // (0b0111 << ADC_DUALMOD_S) |  // Fast mode
-    //   // (0b1000 << ADC_DUALMOD_S) |  // Slow mode
-    //   0;
-    ADC1->CTLR2 =
-      ADC_EXTTRIG |                // External trigger
-      ADC_ExternalTrigConv_None |  // Software trigger
-      ADC_ADON;
-    // ADC_ALIGN | // Left
-    // ADC_DMA |
-    // ADC_CONT |
   }
 
   // Преобразует число тактов в допустимое SMP
   static int smp(int32_t tick) {
     uint8_t smp = 0;
-    while (smp < 7 && tick > (pre * AdcSmpclk[smp++]));
-    smp--;
+    while (smp < 7 && tick > (adc_prescale * AdcSmpclk[smp]))smp++;
     return smp;
   }
 
-  static int cycle(int32_t tick) {
-    return pre * AdcSmpclk[smp(tick)];
-  }
+  static int cycle(int32_t tick) { return adc_prescale * AdcSmpclk[smp(tick)]; }
 
-  INLINE static void delay(int time) {
-    ADC1->SAMPTR2 = smp(time) << (ch1 * 3);
-    ADC2->SAMPTR2 = smp(time) << (ch1 * 3);
-  }
+  INLINE void trigger(uint32_t trig) { ADCx()->CTLR2 = (ADCx()->CTLR2 & ~ADC_ExternalTrigConv_None) | trig; }
 
-  INLINE static void chanel(int ch) {
-    ch1         = ch;
-    ADC1->RSQR3 = ch;
-    ADC2->RSQR3 = ch;
-  }
+  INLINE void int_clear() { ADCx()->STATR = 0; }
+  INLINE void int_enable() { ADCx()->CTLR1 |= ADC_EOCIE; }
+  INLINE void int_disable() { ADCx()->CTLR1 &= ~ADC_EOCIE; }
+  INLINE void dma_enable() { ADCx()->CTLR2 |= ADC_DMA; }
 
-  INLINE static void prescale(const u8 div) {
-    u32 cfg = RCC->CFGR0 & ~RCC_ADCPRE;
-    switch (div) {
-      case 2: RCC->CFGR0 = cfg | RCC_ADCPRE_DIV2; break;
-      case 4: RCC->CFGR0 = cfg | RCC_ADCPRE_DIV4; break;
-      case 6: RCC->CFGR0 = cfg | RCC_ADCPRE_DIV6; break;
-      case 8: RCC->CFGR0 = cfg | RCC_ADCPRE_DIV8; break;
-      default: return;
-    }
-    pre = div;
-  }
-
-  INLINE static void dma() { ADC1->CTLR2 |= ADC_DMA; }
-  INLINE static void gain(u32 gain) { ADC1->CTLR1 = ADC_BUFEN | (gain << ADC_GAIN_S); }
-  INLINE static void single() { ADC1->CTLR2 |= ADC_ADON | ADC_SWSTART; }
-  INLINE static void start() { ADC1->CTLR2 |= ADC_CONT | ADC_ADON | ADC_SWSTART; }
-  INLINE static void stop() { ADC1->CTLR2 &= ~(ADC_CONT | ADC_SWSTART); }  // Снять CONT
-  INLINE static void wait() { while (!(ADC1->STATR & ADC_EOC)); }
-  INLINE static uint32_t value() { return ADC1->RDATAR; }
+  INLINE void delay(int time) { ADCx()->SAMPTR2 = smp(time) << (chanel * 3); }
+  INLINE void gain(u32 gain) { ADCx()->CTLR1 = ADC_OutputBuffer_Enable | (gain << ADC_GAIN_S); }
+  INLINE void single() { ADCx()->CTLR2 |= ADC_ADON | ADC_SWSTART; }
+  INLINE void start() { ADCx()->CTLR2 |= ADC_CONT | ADC_ADON | ADC_SWSTART; }
+  INLINE void stop() { ADCx()->CTLR2 &= ~(ADC_CONT | ADC_SWSTART); }  // Снять CONT
+  INLINE void wait() { while (!(ADCx()->STATR & ADC_EOC)); }
+  INLINE uint32_t value() { return ADCx()->RDATAR; }
 };

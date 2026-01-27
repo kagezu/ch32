@@ -25,8 +25,9 @@ constexpr int HEIGHT        = lcd.max_y() - BORDER_BOTTOM - BORDER_TOP;         
 constexpr int MIDLE_AXIS    = (lcd.max_y() - BORDER_BOTTOM - (HEIGHT >> 1));                  // Расположение оси X
 Rect view                   = Rect(0, BORDER_TOP, lcd.max_x(), lcd.max_y() - BORDER_BOTTOM);  // Графическая область
 
-Lagrange<Lp, SEG, ADC::DEPTH> L;
-FFT<SAMPLES, ADC::DEPTH> fft;
+ADC<1> adc(ADC_CH);
+Lagrange<Lp, SEG, adc.DEPTH> L;
+FFT<SAMPLES, adc.DEPTH> fft;
 Encoder enc;
 DMA<DMA_ADC1, DMA_VH> dma;
 
@@ -34,19 +35,19 @@ short buffer[SAMPLES];
 short points[POINTES];
 short points2[POINTES] = {};
 
+int index = 0;
 int fps   = 20;
 int count = 0;
 int timer = 0;
 
 // Преобразование к координатам дисплея
 void transform_to_display(short in[], short out[], int32_t scale, int32_t offset) {
-  for (int16_t i = 0; i <= POINTES; i++) out[i] = offset - (((in[i]) * scale) >> ADC::DEPTH);
+  for (int16_t i = 0; i <= POINTES; i++) out[i] = offset - (((in[i]) * scale) >> adc.DEPTH);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void SysTick_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void DMA1_Channel1_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 }
@@ -74,7 +75,7 @@ void print_info() {
 
 // Поиск окна
 void osc_window(int &offset, int &median) {
-  int min = 1 << ADC::DEPTH;
+  int min = 1 << adc.DEPTH;
   int max = 0;
   offset  = 0;
   for (int i = (POINTES >> 1); i < END_POINT + (POINTES >> 1); i++) {
@@ -164,15 +165,18 @@ void init() {
   // Таймер для работы с АЦП
   tim4.PSC(0);
   tim4.cont();
-  tim4.int_ovf();
+  tim4.OCR(1, 4);
+  tim4.pwm(TIM_EN, 4);
+  tim4.enable(4);
 
   // sysTick Сканирование энкодера по таймеру
   STK_CMP  = F_CPU / INT_FQ - 1;
   STK_CTRL = STK_STE | STK_STCLK | STK_STRE | STK_STIE;
 
   // ADC DMA
-  ADC::init(ADC_CH);
-  ADC::dma();
+  ADCCLK(4);
+  adc.dma_enable();
+  adc.trigger(ADC_ExternalTrigConv_T4_CC4);
   dma.adc(buffer, sizeof(buffer) >> 1);
   dma.int_coml();
 
@@ -186,7 +190,6 @@ void init() {
   enc.init();
 
   NVIC_EnableIRQ(SysTick_IRQn);
-  NVIC_EnableIRQ(TIM4_IRQn);
   NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
@@ -194,11 +197,10 @@ void init() {
 
 // Заполнение буфера данными из АЦП
 void sample(uint32_t time) {
-
+  adc.delay(time);     // Устанавливаем время выборки АЦП
   tim4.TOP(time - 1);  // Количество тактов между семплами
   tim4.enable();
-  ADC::delay(time);  // Устанавливаем время выборки АЦП
-  dma.start();  // Запускаем передачу данных из АЦП в буфер
+  dma.start();              // Запускаем передачу данных из АЦП в буфер
   while (dma.is_active());  // Ожидаем завершения работы DMA
   tim4.disable();
 }
@@ -212,9 +214,9 @@ int main(void) {
   int sl            = 0;
 
   while (true) {
-    const int32_t t_seg = (int32_t)FqScale.get_item<int>() * 144;      // Умножаем микросекунды на 144 MHz. [такты на сегмент]
-    int32_t scale       = (ADC::AREF * SEG) / VScale.get_item<int>();  // Масштабирование по напряжению [пикселей на весь диапазон]
-    fps                 = fps - (fps >> 2) + (INT_FQ / timer);         // Расчёт FPS
+    const int32_t t_seg = (int32_t)FqScale.get_item<int>() * (F_CPU / 1000000);  // Умножаем микросекунды на X MHz. [такты на сегмент]
+    int32_t scale       = (adc.AREF * SEG) / VScale.get_item<int>();             // Масштабирование по напряжению [пикселей на весь диапазон]
+    fps                 = fps - (fps >> 2) + (INT_FQ / timer);                   // Расчёт FPS
     timer               = 0;
 
     // Инициализация режимов работы при переключении
@@ -261,7 +263,7 @@ int main(void) {
 
     switch (mode) {
       case MODE_OSC: {
-        int t_adc  = ADC::cycle(t_seg / SEG);        // Готовим допустимое значение для АЦП. [тактов на выборку]
+        int t_adc  = adc.cycle(t_seg / SEG);         // Готовим допустимое значение для АЦП. [тактов на выборку]
         int p_samp = (t_adc * SEG - 1) / t_seg + 1;  // Если больше 1, необходима интерполяция. [точек на выборку]
         int t_samp = t_seg * p_samp / SEG;           // Уточняем время выборки. [тактов на выборку]
         sample(t_samp);
@@ -275,7 +277,7 @@ int main(void) {
         osc_window(offset, median);  // Поиск окна по триггеру и среднего напряжения
 
         // Настраиваем масштабирование
-        median = VType.value == 0 ? MIDLE_AXIS + ((median * scale) >> ADC::DEPTH) : lcd.max_y() - BORDER_BOTTOM;
+        median = VType.value == 0 ? MIDLE_AXIS + ((median * scale) >> adc.DEPTH) : lcd.max_y() - BORDER_BOTTOM;
         median -= ZeroLevel.value;
         transform_to_display(buffer + offset, points, scale, median);
         data_draw();
@@ -321,11 +323,6 @@ int main(void) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-
-void TIM4_IRQHandler(void) {
-  ADC::single();
-  tim4.int_clear();
-}
 
 void DMA1_Channel1_IRQHandler(void) {
   dma.reset();
