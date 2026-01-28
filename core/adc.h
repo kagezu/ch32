@@ -50,8 +50,8 @@ public:
 
   // Преобразует число тактов в допустимое SMP
   static int smp(int32_t tick) {
-    uint8_t smp = 0;
-    while (smp < 7 && tick > (adc_prescale * AdcSmpclk[smp]))smp++;
+    uint8_t smp = 7;
+    while (smp && tick < (adc_prescale * AdcSmpclk[smp])) smp--;
     return smp;
   }
 

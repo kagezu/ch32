@@ -2,9 +2,9 @@
 
 #define CFGR0_PLLMull_Mask ((uint32_t)0x003C0000)
 
-const uint16_t AdcSmpclk[]   = {14, 20, 26, 41, 54, 68, 84, 252};
+const uint16_t AdcSmpclk[] = {14, 20, 26, 41, 54, 68, 84, 252};
 // const uint16_t PllPrescale[] = {104, 112, 120, 128, 144};
-uint8_t adc_prescale         = 0;
+uint8_t adc_prescale       = 0;
 
 void ADCCLK(u8 div) {
   switch (div) {

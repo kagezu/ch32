@@ -7,18 +7,18 @@
 #include "encoder.h"
 #include "fft.h"
 
-constexpr int ADC_CH  = 3;    // Номер канала ADC
-constexpr int INT_FQ  = 200;  // Hz опрос энкодера
-constexpr int INFO_FQ = 5;    // Hz обновление текста
-constexpr int Lp      = 8;    // Узловых точек для интерполяции Лагранжа (чётная)
+constexpr int ADC_CH   = 3;    // Номер канала ADC
+constexpr int INT_FQ   = 200;  // Hz опрос энкодера
+constexpr int INFO_FQ  = 5;    // Hz обновление текста
+constexpr int Lp       = 8;    // Узловых точек для интерполяции Лагранжа (чётная)
+constexpr int MAX_STEP = 20;   // Max шаг узлов интерполяции
 
 // Дисплей
 LCD lcd;
-constexpr int BORDER_TOP    = 32;                                                             // Отступ от верха экрана
-constexpr int BORDER_BOTTOM = 1;                                                              // Отступ от низа экрана
-constexpr int SEG           = 25;                                                             // Шаг сетки
+constexpr int BORDER_TOP    = 66;                                                             // 32;                                                             // Отступ от верха экрана
+constexpr int BORDER_BOTTOM = 0;                                                              // Отступ от низа экрана
 constexpr int POINTES       = ((lcd.max_x() + 2));                                            // Количество точек для отображения
-constexpr int SAMPLES       = POINTES * 3;                                                    // Количество измерений для анализа
+constexpr int SAMPLES       = POINTES * 4;                                                    // Количество измерений для анализа
 constexpr int END_LEN       = Lp + 2;                                                         // Резерв для интерполятора
 constexpr int END_POINT     = SAMPLES - POINTES - END_LEN;                                    // Последняя точка, с которой может начаться отображение
 constexpr int HEIGHT        = lcd.max_y() - BORDER_BOTTOM - BORDER_TOP;                       // Высота области для граф. данных
@@ -26,7 +26,7 @@ constexpr int MIDLE_AXIS    = (lcd.max_y() - BORDER_BOTTOM - (HEIGHT >> 1));    
 Rect view                   = Rect(0, BORDER_TOP, lcd.max_x(), lcd.max_y() - BORDER_BOTTOM);  // Графическая область
 
 ADC<1> adc(ADC_CH);
-Lagrange<Lp, SEG, adc.DEPTH> L;
+Lagrange<Lp, MAX_STEP, adc.DEPTH> L;
 FFT<SAMPLES, adc.DEPTH> fft;
 Encoder enc;
 DMA<DMA_ADC1, DMA_VH> dma;
@@ -40,10 +40,10 @@ int fps   = 20;
 int count = 0;
 int timer = 0;
 
-// Преобразование к координатам дисплея
-void transform_to_display(short in[], short out[], int32_t scale, int32_t offset) {
-  for (int16_t i = 0; i <= POINTES; i++) out[i] = offset - (((in[i]) * scale) >> adc.DEPTH);
-}
+u32 tick_segment;
+u32 tick_max_sample;
+u32 point_sample;
+u32 tick_sample;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -52,158 +52,26 @@ void SysTick_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void DMA1_Channel1_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
 // Вывод на экран текстовой информации
-void print_info() {
-  lcd.viewport();
-  lcd.color(Aqua);
-  lcd.color2(Yellow);
-  lcd.printf(
-    "\f\1%u\1us \1%u\1mV %S  ",
-    FqScale.get_item<int>(),
-    VScale.get_item<int>(),
-    VType.get_item<char *>());
-  lcd.at(lcd.max_x(), 0);
-  lcd.printf("\b\b\b\b\b\b\b\b\bFPS %.1.2q ", fps);
-  lcd.printf("\f\n");
-  menu.print(&lcd);
-  lcd.prints("             ");
-}
+void print_info();
 
-///////////////////////////////////////////////////////////////////////////////
+// Преобразование к координатам дисплея
+void transform_to_display(short in[], short out[], int32_t scale, int32_t offset);
 
 // Поиск окна
-void osc_window(int &offset, int &median) {
-  int min = 1 << adc.DEPTH;
-  int max = 0;
-  offset  = 0;
-  for (int i = (POINTES >> 1); i < END_POINT + (POINTES >> 1); i++) {
-    const int val = buffer[i];
-    if (min > val) min = val;
-    else if (max < val) {
-      max    = val;
-      offset = i;
-    }
-  }
-  offset -= POINTES >> 1;
-  median = (min + max) >> 1;
-
-  if (TType.value == Front) {
-    offset = 0;
-    while (offset++ < END_POINT)
-      if (buffer[offset + (POINTES >> 1)] < median) break;
-    while (offset++ < END_POINT)
-      if (buffer[offset + (POINTES >> 1)] > median) break;
-  }
-
-  if (TType.value == Cutoff) {
-    offset = 0;
-    while (offset++ < END_POINT)
-      if (buffer[offset + (POINTES >> 1)] > median) break;
-    while (offset++ < END_POINT)
-      if (buffer[offset + (POINTES >> 1)] < median) break;
-  }
-}
-
-////////////////////////////////// Axis ///////////////////////////////////////
-
-// Обрамление графической области
-void border_draw() {
-  lcd.viewport();
-  lcd.color(Blue);
-  lcd.w_line(0, view.min_y - 1, lcd.max_x());
-  lcd.w_line(0, view.max_y + 1, lcd.max_x());
-}
-
-// Сетка
-void axis_draw() {
-  lcd.viewport(&view);
-  // lcd.fill(&view, Black);
-  lcd.color(Teal);
-
-  lcd.h_line((lcd.max_x() >> 1), BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
-  for (int i = 1; i <= lcd.max_x() / (SEG * 2); i++) {
-    lcd.h_line((lcd.max_x() >> 1) + i * SEG, BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
-    lcd.h_line((lcd.max_x() >> 1) - i * SEG, BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
-  }
-
-  lcd.w_line(0, MIDLE_AXIS, lcd.max_x() - 0);
-  for (int i = 0; i <= (HEIGHT / SEG); i++) {
-    lcd.w_line(0, MIDLE_AXIS + i * SEG, lcd.max_x());
-    lcd.w_line(0, MIDLE_AXIS - i * SEG, lcd.max_x());
-  }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-// Обновление графика
-void data_draw() {
-  int last   = points2[0];
-  int last2  = points[0];
-  points2[0] = last2;
-  lcd.viewport(&view);
-
-  for (int i = 1; i < POINTES; i++) {
-    lcd.color(Black);
-    lcd.h_line(i + view.min_x - 1, last, points2[i]);
-    lcd.color(Yellow);
-    lcd.h_line(i + view.min_x - 1, last2, points[i]);
-    last  = points2[i];
-    last2 = points2[i] = points[i];
-  }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-void init() {
-  // Восстановление настроек из батарейного домена
-  // if (RTC->REG[15] == RTC_REG_SAVED)
-  //   menu.load((int *)RTC->REG);
-  // RTC->REG[15] = RTC_REG_SAVED;
-
-  // Таймер для работы с АЦП
-  tim4.PSC(0);
-  tim4.cont();
-  tim4.OCR(1, 4);
-  tim4.pwm(TIM_EN, 4);
-  tim4.enable(4);
-
-  // sysTick Сканирование энкодера по таймеру
-  STK_CMP  = F_CPU / INT_FQ - 1;
-  STK_CTRL = STK_STE | STK_STCLK | STK_STRE | STK_STIE;
-
-  // ADC DMA
-  ADCCLK(4);
-  adc.dma_enable();
-  adc.trigger(ADC_ExternalTrigConv_T4_CC4);
-  dma.adc(buffer, sizeof(buffer) >> 1);
-  dma.int_coml();
-
-  // LCD
-  lcd.init();
-  if (lcd.max_x() < 320) lcd.font(system_5x7, 1, 3);
-  else lcd.font(arial_14, 1, 3);
-
-  //
-  fft.init();
-  enc.init();
-
-  NVIC_EnableIRQ(SysTick_IRQn);
-  NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-}
-
-//////////////////////////////////  АЦП  //////////////////////////////////////
+void osc_window(int &offset, int &median);
 
 // Заполнение буфера данными из АЦП
-void sample(uint32_t time) {
-  adc.delay(time);     // Устанавливаем время выборки АЦП
-  tim4.TOP(time - 1);  // Количество тактов между семплами
-  tim4.enable();
-  dma.start();              // Запускаем передачу данных из АЦП в буфер
-  while (dma.is_active());  // Ожидаем завершения работы DMA
-  tim4.disable();
-}
+void record(uint32_t time);
+
+// Обрамление графики
+void border_draw();
+void axis_draw();
+
+// Обновление графика
+void data_draw();
+
+void init();
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -214,10 +82,10 @@ int main(void) {
   int sl            = 0;
 
   while (true) {
-    const int32_t t_seg = (int32_t)FqScale.get_item<int>() * (F_CPU / 1000000);  // Умножаем микросекунды на X MHz. [такты на сегмент]
-    int32_t scale       = (adc.AREF * SEG) / VScale.get_item<int>();             // Масштабирование по напряжению [пикселей на весь диапазон]
-    fps                 = fps - (fps >> 2) + (INT_FQ / timer);                   // Расчёт FPS
-    timer               = 0;
+    tick_segment  = (u32)FqScale.get_item<int>() * (F_CPU / 1000000);     // Умножаем микросекунды на X MHz. [такты на сегмент]
+    int32_t scale = (adc.AREF * Segment.value) / VScale.get_item<int>();  // Масштабирование по напряжению [пикселей на весь диапазон]
+    fps           = fps - (fps >> 2) + (INT_FQ / timer);                  // Расчёт FPS
+    timer         = 0;
 
     // Инициализация режимов работы при переключении
     if (mode != menu.value) {
@@ -263,15 +131,16 @@ int main(void) {
 
     switch (mode) {
       case MODE_OSC: {
-        int t_adc  = adc.cycle(t_seg / SEG);         // Готовим допустимое значение для АЦП. [тактов на выборку]
-        int p_samp = (t_adc * SEG - 1) / t_seg + 1;  // Если больше 1, необходима интерполяция. [точек на выборку]
-        int t_samp = t_seg * p_samp / SEG;           // Уточняем время выборки. [тактов на выборку]
-        sample(t_samp);
+        tick_max_sample = adc.cycle(tick_segment / Segment.value);                   // Готовим допустимое значение для АЦП. [тактов на выборку]
+        point_sample    = (tick_max_sample * Segment.value - 1) / tick_segment + 1;  // Если больше 1, необходима интерполяция. [точек на выборку]
+        tick_sample     = tick_segment * point_sample / Segment.value;               // Уточняем время выборки. [тактов на выборку]
+        // if (!dma.is_active()) 
+        record(tick_sample);
 
-        if (p_samp > 1) {  // Использовать интерполяцию
-          L.init(p_samp);  // Инициализация коэффициентов Лагранжа
+        if (point_sample > 1) {  // Использовать интерполяцию
+          L.init(point_sample);  // Инициализация коэффициентов Лагранжа
           // Чтоб немного сэкономить память, пишем в тот же буфер
-          L.interpolate(buffer + SAMPLES - SAMPLES / p_samp - END_LEN / 2, buffer, SAMPLES);
+          L.interpolate(buffer + SAMPLES - SAMPLES / point_sample - END_LEN / 2, buffer, SAMPLES);
         }
         int median, offset;
         osc_window(offset, median);  // Поиск окна по триггеру и среднего напряжения
@@ -285,7 +154,7 @@ int main(void) {
       }
 
       case MODE_FFT: {
-        sample(t_seg);
+        record(tick_segment);
         fft.run(buffer);                    // Быстрое преобразование Фурье
         if (FType.value) fft.sum();         // Применяем суммирующий фильтр
         fft.sqrt(buffer, lcd.max_x() + 1);  // Находим модуля амплитуд
@@ -295,7 +164,7 @@ int main(void) {
       }
 
       case MODE_SPEC: {
-        sample(t_seg);
+        record(tick_segment);
         fft.run(buffer);
         fft.sqrt(buffer, lcd.max_y() + 2);
 
@@ -320,6 +189,193 @@ int main(void) {
       while (enc.is_push());
     }
   }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Преобразование к координатам дисплея
+void transform_to_display(short in[], short out[], int32_t scale, int32_t offset) {
+  for (int16_t i = 0; i <= POINTES; i++) out[i] = offset - (((in[i]) * scale) >> adc.DEPTH);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Вывод на экран текстовой информации
+void print_info() {
+  lcd.viewport();
+  lcd.color(Aqua);
+  lcd.color2(Yellow);
+  lcd.printf(
+    "\f\1%u\1us \1%u\1mV %S  ",
+    FqScale.get_item<int>(),
+    VScale.get_item<int>(),
+    VType.get_item<char *>());
+  lcd.at(lcd.max_x(), 0);
+  lcd.printf("\b\b\b\b\b\b\b\b\bFPS %.1.2q ", fps);
+  lcd.printf("\f\n");
+  menu.print(&lcd);
+  lcd.prints("             \n");
+  lcd.printf("tick_seg: %lu max_samp: %u point_samp: %u tick_samp: %u      \n", tick_segment, tick_max_sample, point_sample, tick_sample);
+  lcd.printf("adc_prescale: %u  Segment.value: %u   ", adc_prescale, Segment.value);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Поиск окна
+void osc_window(int &offset, int &median) {
+  int min = 1 << adc.DEPTH;
+  int max = 0;
+  offset  = 0;
+  for (int i = (POINTES >> 1); i < END_POINT + (POINTES >> 1); i++) {
+    const int val = buffer[i];
+    if (min > val) min = val;
+    else if (max < val) {
+      max    = val;
+      offset = i;
+    }
+  }
+  offset -= POINTES >> 1;
+  median = (min + max) >> 1;
+
+  if (TType.value == Front) {
+    offset = 0;
+    while (offset++ < END_POINT)
+      if (buffer[offset + (POINTES >> 1)] < median) break;
+    while (offset++ < END_POINT)
+      if (buffer[offset + (POINTES >> 1)] > median) break;
+  }
+
+  if (TType.value == Cutoff) {
+    offset = 0;
+    while (offset++ < END_POINT)
+      if (buffer[offset + (POINTES >> 1)] > median) break;
+    while (offset++ < END_POINT)
+      if (buffer[offset + (POINTES >> 1)] < median) break;
+  }
+}
+
+////////////////////////////////// Axis ///////////////////////////////////////
+
+// Обрамление графической области
+void border_draw() {
+  lcd.viewport();
+  lcd.color(White);
+  lcd.w_line(0, view.min_y, lcd.max_x());
+  lcd.w_line(0, view.max_y, lcd.max_x());
+}
+
+// Сетка
+void axis_draw_raw(int segment) {
+  lcd.h_line((lcd.max_x() >> 1), BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
+  for (int i = 1; i <= lcd.max_x() / (segment * 2); i++) {
+    lcd.h_line((lcd.max_x() >> 1) + i * segment, BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
+    lcd.h_line((lcd.max_x() >> 1) - i * segment, BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
+  }
+
+  lcd.w_line(0, MIDLE_AXIS, lcd.max_x() - 0);
+  for (int i = 0; i <= (HEIGHT / segment); i++) {
+    lcd.w_line(0, MIDLE_AXIS + i * segment, lcd.max_x());
+    lcd.w_line(0, MIDLE_AXIS - i * segment, lcd.max_x());
+  }
+}
+
+void axis_draw() {
+  static int old_seg = 0;
+  lcd.viewport(&view);
+  if (Segment.value != old_seg) {
+    lcd.color(Black);
+    axis_draw_raw(old_seg);
+    old_seg = Segment.value;
+  }
+  lcd.color(Teal);
+  axis_draw_raw(old_seg);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Обновление графика
+void data_draw() {
+  int last   = points2[0];
+  int last2  = points[0];
+  points2[0] = last2;
+  lcd.viewport(&view);
+
+  for (int i = 1; i < POINTES; i++) {
+    lcd.color(Black);
+    lcd.h_line(i + view.min_x - 1, last, points2[i]);
+    lcd.color(Yellow);
+    lcd.h_line(i + view.min_x - 1, last2, points[i]);
+    last  = points2[i];
+    last2 = points2[i] = points[i];
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+void init() {
+  // Восстановление настроек из батарейного домена
+  // if (RTC->REG[15] == RTC_REG_SAVED)
+  //   menu.load((int *)RTC->REG);
+  // RTC->REG[15] = RTC_REG_SAVED;
+
+  // Таймер для работы с АЦП
+  tim4.PSC(0);
+  tim4.cont();
+  tim4.OCR(1, 4);
+  tim4.pwm(TIM_EN, 4);
+  tim4.enable(4);
+
+  // sysTick Сканирование энкодера по таймеру
+  STK_CMP  = F_CPU / INT_FQ - 1;
+  STK_CTRL = STK_STE | STK_STCLK | STK_STRE | STK_STIE;
+
+  // ADC DMA
+  ADCCLK(2);
+  adc.dma_enable();
+  adc.trigger(ADC_ExternalTrigConv_T4_CC4);
+  dma.adc(buffer, sizeof(buffer) >> 1);
+  dma.int_coml();
+
+  // LCD
+  lcd.init();
+  if (lcd.max_x() < 320) lcd.font(system_5x7, 1, 3);
+  else lcd.font(arial_14, 1, 3);
+
+  //
+  fft.init();
+  enc.init();
+
+  NVIC_EnableIRQ(SysTick_IRQn);
+  NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+}
+
+//////////////////////////////////  АЦП  //////////////////////////////////////
+
+// Один канал
+void record_adc(uint32_t time) {
+  // tim4.disable();
+  adc.delay(time);     // Устанавливаем время выборки АЦП
+  tim4.TOP(time - 1);  // Количество тактов между семплами
+  tim4.enable();
+  dma.start();         // Запускаем передачу данных из АЦП в буфер
+  while (dma.is_active());  // Ожидаем завершения работы DMA
+  tim4.disable();
+}
+
+// Два канала
+void record_dual(uint32_t time) {
+  // tim4.disable();
+  adc.delay(time);     // Устанавливаем время выборки АЦП
+  tim4.TOP(time - 1);  // Количество тактов между семплами
+  tim4.enable();
+  dma.start();         // Запускаем передачу данных из АЦП в буфер
+  while (dma.is_active());  // Ожидаем завершения работы DMA
+  tim4.disable();
+}
+
+// Заполнение буфера данными из АЦП
+void record(uint32_t time) {
+  record_adc(time);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

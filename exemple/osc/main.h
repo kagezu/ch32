@@ -19,14 +19,15 @@ const char *_ft[] = { "Off", "Sum" };
 const char *_tt[] = { "Front", "Cutoff", "Maximum" };
 
 ADD_MINT(FqScale, "Time", 9, _fq);
-ADD_MINT(VScale, "Voltage", 2, _vsc);
+ADD_MINT(VScale, "Voltage", 0, _vsc);
 ADD_MTEXT(VType, "Current", 0, _vt);
 ADD_MVALUE(ZeroLevel, "Setup zero", 0, -200, 200);
+ADD_MVALUE(Segment, "Scale", 25, 15, 60);
 ADD_MTEXT(FType, "Filter", 0, _ft);
 ADD_MTEXT(TType, "Trigger", 2, _tt);
 ADD_MITEM(MExit, "< < <");
 
-MItem OSC_Menu = { "\bOSC", ListType, 0, 0, 0, 5 , { &MExit, &FqScale, &VScale, &VType, &ZeroLevel, &TType } };
+MItem OSC_Menu = { "\bOSC", ListType, 0, 0, 0, 6 , { &MExit, &FqScale, &VScale, &VType, &ZeroLevel, &TType, &Segment } };
 MItem FFT_Menu = { "\bFFT", ListType, 0, 0, 0, 3 , { &MExit, &FqScale, &VScale, &FType } };
 MItem SPEC_Menu = { "\bSPEC", ListType, 0, 0, 0, 0 , { &MExit } };
 
