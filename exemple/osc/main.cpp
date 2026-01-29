@@ -26,6 +26,7 @@ constexpr int MIDLE_AXIS    = (lcd.max_y() - BORDER_BOTTOM - (HEIGHT >> 1));    
 Rect view                   = Rect(0, BORDER_TOP, lcd.max_x(), lcd.max_y() - BORDER_BOTTOM);  // Графическая область
 
 ADC<1> adc(ADC_CH);
+ADC<2> adc2(ADC_CH);
 Lagrange<Lp, MAX_STEP, adc.DEPTH> L;
 FFT<SAMPLES, adc.DEPTH> fft;
 Encoder enc;
@@ -35,10 +36,10 @@ short buffer[SAMPLES];
 short points[POINTES];
 short points2[POINTES] = {};
 
-int index = 0;
-int fps   = 20;
-int count = 0;
-int timer = 0;
+volatile int index = 0;
+int fps            = 20;
+int count          = 0;
+int timer          = 0;
 
 u32 tick_segment;
 u32 tick_max_sample;
@@ -50,6 +51,9 @@ u32 tick_sample;
 extern "C" {
 void SysTick_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void DMA1_Channel1_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+
+void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+void ADC1_2_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 }
 
 // Вывод на экран текстовой информации
@@ -134,7 +138,7 @@ int main(void) {
         tick_max_sample = adc.cycle(tick_segment / Segment.value);                   // Готовим допустимое значение для АЦП. [тактов на выборку]
         point_sample    = (tick_max_sample * Segment.value - 1) / tick_segment + 1;  // Если больше 1, необходима интерполяция. [точек на выборку]
         tick_sample     = tick_segment * point_sample / Segment.value;               // Уточняем время выборки. [тактов на выборку]
-        // if (!dma.is_active()) 
+        // if (!dma.is_active())
         record(tick_sample);
 
         if (point_sample > 1) {  // Использовать интерполяцию
@@ -259,7 +263,7 @@ void osc_window(int &offset, int &median) {
 // Обрамление графической области
 void border_draw() {
   lcd.viewport();
-  lcd.color(White);
+  lcd.color(Red);
   lcd.w_line(0, view.min_y, lcd.max_x());
   lcd.w_line(0, view.max_y, lcd.max_x());
 }
@@ -289,6 +293,7 @@ void axis_draw() {
   }
   lcd.color(Teal);
   axis_draw_raw(old_seg);
+  border_draw();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -325,6 +330,8 @@ void init() {
   tim4.pwm(TIM_EN, 4);
   tim4.enable(4);
 
+  tim4.int_ovf();
+
   // sysTick Сканирование энкодера по таймеру
   STK_CMP  = F_CPU / INT_FQ - 1;
   STK_CTRL = STK_STE | STK_STCLK | STK_STRE | STK_STIE;
@@ -333,6 +340,8 @@ void init() {
   ADCCLK(2);
   adc.dma_enable();
   adc.trigger(ADC_ExternalTrigConv_T4_CC4);
+  adc2.int_enable();
+
   dma.adc(buffer, sizeof(buffer) >> 1);
   dma.int_coml();
 
@@ -354,10 +363,10 @@ void init() {
 // Один канал
 void record_adc(uint32_t time) {
   // tim4.disable();
-  adc.delay(time);     // Устанавливаем время выборки АЦП
-  tim4.TOP(time - 1);  // Количество тактов между семплами
+  adc.delay(time);          // Устанавливаем время выборки АЦП
+  tim4.TOP(time - 1);       // Количество тактов между семплами
   tim4.enable();
-  dma.start();         // Запускаем передачу данных из АЦП в буфер
+  dma.start();              // Запускаем передачу данных из АЦП в буфер
   while (dma.is_active());  // Ожидаем завершения работы DMA
   tim4.disable();
 }
@@ -365,20 +374,47 @@ void record_adc(uint32_t time) {
 // Два канала
 void record_dual(uint32_t time) {
   // tim4.disable();
-  adc.delay(time);     // Устанавливаем время выборки АЦП
-  tim4.TOP(time - 1);  // Количество тактов между семплами
+  adc.delay(time);          // Устанавливаем время выборки АЦП
+  tim4.TOP(time - 1);       // Количество тактов между семплами
   tim4.enable();
-  dma.start();         // Запускаем передачу данных из АЦП в буфер
+  dma.start();              // Запускаем передачу данных из АЦП в буфер
   while (dma.is_active());  // Ожидаем завершения работы DMA
   tim4.disable();
 }
 
+int adc_on = 0;
+
 // Заполнение буфера данными из АЦП
 void record(uint32_t time) {
-  record_adc(time);
+
+  adc2.delay(time);    // Устанавливаем время выборки АЦП
+  tim4.TOP(time - 1);  // Количество тактов между семплами
+  tim4.enable();
+  NVIC_EnableIRQ(ADC_IRQn);
+  NVIC_EnableIRQ(TIM4_IRQn);
+  delay_ms(10);
+  while (index);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+
+void TIM4_IRQHandler(void) {
+  adc2.single();
+  tim4.int_clear();
+}
+
+void ADC1_2_IRQHandler(void) {
+  buffer[index] = adc2.value();
+  index += 1;
+  if (index == SAMPLES) {
+    tim4.disable();
+    NVIC_DisableIRQ(TIM4_IRQn);
+    NVIC_DisableIRQ(ADC_IRQn);
+    index = 0;
+  }
+  adc2.int_clear();
+}
+
 
 void DMA1_Channel1_IRQHandler(void) {
   dma.reset();
