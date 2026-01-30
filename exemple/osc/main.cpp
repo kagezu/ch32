@@ -11,7 +11,7 @@ constexpr int ADC_CH   = 3;    // Номер канала ADC
 constexpr int INT_FQ   = 200;  // Hz опрос энкодера
 constexpr int INFO_FQ  = 5;    // Hz обновление текста
 constexpr int Lp       = 8;    // Узловых точек для интерполяции Лагранжа (чётная)
-constexpr int MAX_STEP = 20;   // Max шаг узлов интерполяции
+constexpr int MAX_STEP = 30;   // Max шаг узлов интерполяции
 
 // Дисплей
 LCD lcd;
@@ -26,7 +26,6 @@ constexpr int MIDLE_AXIS    = (lcd.max_y() - BORDER_BOTTOM - (HEIGHT >> 1));    
 Rect view                   = Rect(0, BORDER_TOP, lcd.max_x(), lcd.max_y() - BORDER_BOTTOM);  // Графическая область
 
 ADC<1> adc(ADC_CH);
-ADC<2> adc2(ADC_CH);
 Lagrange<Lp, MAX_STEP, adc.DEPTH> L;
 FFT<SAMPLES, adc.DEPTH> fft;
 Encoder enc;
@@ -41,19 +40,16 @@ int fps            = 20;
 int count          = 0;
 int timer          = 0;
 
-u32 tick_segment;
-u32 tick_max_sample;
-u32 point_sample;
-u32 tick_sample;
+u32 pix_grid;
+u32 tick_grid;
+u32 tick_smp;
+u32 tick_pix;
 
 ///////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
 void SysTick_Handler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 void DMA1_Channel1_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
-
-void TIM4_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
-void ADC1_2_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
 }
 
 // Вывод на экран текстовой информации
@@ -86,9 +82,10 @@ int main(void) {
   int sl            = 0;
 
   while (true) {
-    tick_segment  = (u32)FqScale.get_item<int>() * (F_CPU / 1000000);     // Умножаем микросекунды на X MHz. [такты на сегмент]
-    int32_t scale = (adc.AREF * Segment.value) / VScale.get_item<int>();  // Масштабирование по напряжению [пикселей на весь диапазон]
-    fps           = fps - (fps >> 2) + (INT_FQ / timer);                  // Расчёт FPS
+    pix_grid      = Segment.value;
+    tick_grid     = (u32)FqScale.get_item<int>() * (F_CPU / 1000000);  // Умножаем микросекунды на X MHz. [такты на сегмент]
+    int32_t scale = (adc.AREF * pix_grid) / VScale.get_item<int>();    // Масштабирование по напряжению [пикселей на весь диапазон]
+    fps           = fps - (fps >> 2) + (INT_FQ / timer);               // Расчёт FPS
     timer         = 0;
 
     // Инициализация режимов работы при переключении
@@ -135,17 +132,34 @@ int main(void) {
 
     switch (mode) {
       case MODE_OSC: {
-        tick_max_sample = adc.cycle(tick_segment / Segment.value);                   // Готовим допустимое значение для АЦП. [тактов на выборку]
-        point_sample    = (tick_max_sample * Segment.value - 1) / tick_segment + 1;  // Если больше 1, необходима интерполяция. [точек на выборку]
-        tick_sample     = tick_segment * point_sample / Segment.value;               // Уточняем время выборки. [тактов на выборку]
+        /*
+        tick_smp = adc.cycle(tick_grid / pix_grid);            // Готовим допустимое значение для АЦП. [тактов на выборку]
+        pix_smp  = (tick_smp * pix_grid - 1) / tick_grid + 1;  // Если больше 1, необходима интерполяция. [точек на выборку]
+        tick_smp = tick_grid * pix_smp / pix_grid;             // Уточняем время выборки. [тактов на выборку]
         // if (!dma.is_active())
-        record(tick_sample);
+        record(tick_smp);
+        */
 
-        if (point_sample > 1) {  // Использовать интерполяцию
-          L.init(point_sample);  // Инициализация коэффициентов Лагранжа
+        tick_pix = tick_grid / pix_grid;  // [тактов на пиксель]
+        tick_smp = adc.cycle(tick_pix);   // Готовим допустимое значение для АЦП. [тактов на выборку]
+
+        if (tick_smp > tick_pix) {        // Использовать интерполяцию
+          record(tick_smp);
+          int a = tick_smp;
+          int b = tick_pix;
+          while (a > MAX_STEP && b > 1) {
+            a >>= 1;
+            b >>= 1;
+          }
+
+          L.init(a);  // Инициализация коэффициентов Лагранжа
+          L.interpolate2(buffer + SAMPLES - SAMPLES * tick_pix / tick_smp - END_LEN / 2, buffer, SAMPLES, b);
+
+          // L.init(pix_smp);  // Инициализация коэффициентов Лагранжа
           // Чтоб немного сэкономить память, пишем в тот же буфер
-          L.interpolate(buffer + SAMPLES - SAMPLES / point_sample - END_LEN / 2, buffer, SAMPLES);
-        }
+          // L.interpolate(buffer + SAMPLES - SAMPLES / pix_smp - END_LEN / 2, buffer, SAMPLES);
+        } else record(tick_pix);
+
         int median, offset;
         osc_window(offset, median);  // Поиск окна по триггеру и среднего напряжения
 
@@ -158,7 +172,7 @@ int main(void) {
       }
 
       case MODE_FFT: {
-        record(tick_segment);
+        record(tick_grid);
         fft.run(buffer);                    // Быстрое преобразование Фурье
         if (FType.value) fft.sum();         // Применяем суммирующий фильтр
         fft.sqrt(buffer, lcd.max_x() + 1);  // Находим модуля амплитуд
@@ -168,7 +182,7 @@ int main(void) {
       }
 
       case MODE_SPEC: {
-        record(tick_segment);
+        record(tick_grid);
         fft.run(buffer);
         fft.sqrt(buffer, lcd.max_y() + 2);
 
@@ -219,8 +233,8 @@ void print_info() {
   lcd.printf("\f\n");
   menu.print(&lcd);
   lcd.prints("             \n");
-  lcd.printf("tick_seg: %lu max_samp: %u point_samp: %u tick_samp: %u      \n", tick_segment, tick_max_sample, point_sample, tick_sample);
-  lcd.printf("adc_prescale: %u  Segment.value: %u   ", adc_prescale, Segment.value);
+  lcd.printf("TG: %lu PG: %u TP: %u TS: %u      \n", tick_grid, pix_grid, tick_pix, tick_smp);
+  lcd.printf("adc_prescale: %u   ", adc_prescale);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -330,8 +344,6 @@ void init() {
   tim4.pwm(TIM_EN, 4);
   tim4.enable(4);
 
-  tim4.int_ovf();
-
   // sysTick Сканирование энкодера по таймеру
   STK_CMP  = F_CPU / INT_FQ - 1;
   STK_CTRL = STK_STE | STK_STCLK | STK_STRE | STK_STIE;
@@ -340,7 +352,6 @@ void init() {
   ADCCLK(2);
   adc.dma_enable();
   adc.trigger(ADC_ExternalTrigConv_T4_CC4);
-  adc2.int_enable();
 
   dma.adc(buffer, sizeof(buffer) >> 1);
   dma.int_coml();
@@ -386,35 +397,10 @@ int adc_on = 0;
 
 // Заполнение буфера данными из АЦП
 void record(uint32_t time) {
-
-  adc2.delay(time);    // Устанавливаем время выборки АЦП
-  tim4.TOP(time - 1);  // Количество тактов между семплами
-  tim4.enable();
-  NVIC_EnableIRQ(ADC_IRQn);
-  NVIC_EnableIRQ(TIM4_IRQn);
-  delay_ms(10);
-  while (index);
+  record_adc(time);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-
-void TIM4_IRQHandler(void) {
-  adc2.single();
-  tim4.int_clear();
-}
-
-void ADC1_2_IRQHandler(void) {
-  buffer[index] = adc2.value();
-  index += 1;
-  if (index == SAMPLES) {
-    tim4.disable();
-    NVIC_DisableIRQ(TIM4_IRQn);
-    NVIC_DisableIRQ(ADC_IRQn);
-    index = 0;
-  }
-  adc2.int_clear();
-}
-
 
 void DMA1_Channel1_IRQHandler(void) {
   dma.reset();
