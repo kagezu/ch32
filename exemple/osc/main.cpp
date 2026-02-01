@@ -132,30 +132,15 @@ int main(void) {
 
     switch (mode) {
       case MODE_OSC: {
-        /*
-        tick_smp = adc.cycle(tick_grid / pix_grid);            // Готовим допустимое значение для АЦП. [тактов на выборку]
-        pix_smp  = (tick_smp * pix_grid - 1) / tick_grid + 1;  // Если больше 1, необходима интерполяция. [точек на выборку]
-        tick_smp = tick_grid * pix_smp / pix_grid;             // Уточняем время выборки. [тактов на выборку]
-        // if (!dma.is_active())
-        record(tick_smp);
-        */
 
         tick_pix = tick_grid / pix_grid;  // [тактов на пиксель]
-        tick_smp = adc.cycle(tick_pix);   // Готовим допустимое значение для АЦП. [тактов на выборку]
-
-// u8 prescale = 0;
-
-// if(tick_pix>=160) { prescale = 8; }
-// else if(tick_pix>=112)  { prescale = 8; }
-  
-  // ADCCLK(prescale);
-
+        tick_smp = adc.preset(tick_pix);  // Готовим допустимое значение для АЦП. [тактов на выборку]
 
         if (tick_smp > tick_pix) {        // Использовать интерполяцию
           record(tick_smp);
           int a = tick_smp;
           int b = tick_pix;
-          while (a > MAX_STEP && b > 1) {
+          while (a > MAX_STEP && b > 1) {  // Сокращаем дробь, если большой числитель
             a >>= 1;
             b >>= 1;
           }
@@ -285,7 +270,7 @@ void osc_window(int &offset, int &median) {
 // Обрамление графической области
 void border_draw() {
   lcd.viewport();
-  lcd.color(Red);
+  lcd.color(LightGreen);
   lcd.w_line(0, view.min_y, lcd.max_x());
   lcd.w_line(0, view.max_y, lcd.max_x());
 }
@@ -357,12 +342,11 @@ void init() {
   STK_CTRL = STK_STE | STK_STCLK | STK_STRE | STK_STIE;
 
   // ADC DMA
-  ADCCLK(2);
   adc.dma_enable();
   adc.trigger(ADC_ExternalTrigConv_T4_CC4);
 
   dma.adc(buffer, sizeof(buffer) >> 1);
-  dma.int_coml();
+  dma.int_compl();
 
   // LCD
   lcd.init();
@@ -382,7 +366,7 @@ void init() {
 // Один канал
 void record_adc(uint32_t time) {
   // tim4.disable();
-  adc.delay(time);          // Устанавливаем время выборки АЦП
+  // adc.delay(time);          // Устанавливаем время выборки АЦП
   tim4.TOP(time - 1);       // Количество тактов между семплами
   tim4.enable();
   dma.start();              // Запускаем передачу данных из АЦП в буфер
@@ -400,8 +384,6 @@ void record_dual(uint32_t time) {
   while (dma.is_active());  // Ожидаем завершения работы DMA
   tim4.disable();
 }
-
-int adc_on = 0;
 
 // Заполнение буфера данными из АЦП
 void record(uint32_t time) {

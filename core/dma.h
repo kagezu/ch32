@@ -117,7 +117,7 @@ public:
   // Ожидание завершения работы канала
   INLINE void wait() { while (!(DMA1->INTFR & INTF(TCIF))); }
   INLINE bool is_active() { return CH()->CFGR & DMA_EN; }
-  INLINE void int_coml() {config |= DMA_TCIE; }
+  INLINE void int_compl() {config |= DMA_TCIE; }
 
   // Установка данных
   template <typename PADD, typename MADD>

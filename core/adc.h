@@ -5,6 +5,8 @@
 #define ADC_EXTSEL_S  17
 #define ADC_GAIN_S    27
 
+#define ADC_Mode_Mask ((uint32_t)0xFFF0FFFF)
+
 //  (0b00 << ADC_GAIN_S) |  // Усиление 1, 4, 16, 64
 //  (0b0111 << ADC_DUALMOD_S) |  // Fast mode
 //  (0b1000 << ADC_DUALMOD_S) |  // Slow mode
@@ -55,14 +57,14 @@ public:
     return smp;
   }
 
-  static u32 cycle(u32 tick) { return adc_prescale * AdcSmpclk[smp(tick)]; }
-
+  // static u32 cycle(u32 tick) { return adc_prescale * AdcSmpclk[smp(tick)]; }
   INLINE void trigger(uint32_t trig) { ADCx()->CTLR2 = (ADCx()->CTLR2 & ~ADC_ExternalTrigConv_None) | trig; }
 
   INLINE void int_clear() { ADCx()->STATR = 0; }
   INLINE void int_enable() { ADCx()->CTLR1 |= ADC_EOCIE; }
   INLINE void int_disable() { ADCx()->CTLR1 &= ~ADC_EOCIE; }
   INLINE void dma_enable() { ADCx()->CTLR2 |= ADC_DMA; }
+  INLINE void mode(u32 conf = ADC_Mode_Independent) { ADCx()->CTLR1 = conf | (ADCx()->CTLR1 & ADC_Mode_Mask); }
 
   INLINE void delay(int time) { ADCx()->SAMPTR2 = smp(time) << (chanel * 3); }
   INLINE void sample(u32 samp) { ADCx()->SAMPTR2 = samp << (chanel * 3); }
@@ -87,17 +89,19 @@ public:
         samp = smp(tick);
         sample(samp);
         tick_sample = AdcSmpclk[samp] * prescale;
+        mode(ADC_Mode_Independent);
         break;
 
-      case ADC_PRESET_DUAL:
-        prescale = tick / AdcSmpclk[0];
-        if (prescale > 8) prescale = 8;
-        if (prescale < 2)
-        { prescale = 2;}
-        else {ADCx()->CTLR2 =0;}
-        ADCCLK(prescale & 0x0E);
-        tick_sample = cycle(tick);
-        break;
+      // case ADC_PRESET_DUAL:
+      //   prescale = tick / AdcSmpclk[0];
+      //   if (prescale > 8) prescale = 8;
+      //   if (prescale < 2) {
+      //     prescale = 2;
+      //   } else {
+      //     ADCx()->CTLR2 = 0;
+      //   }
+      //   ADCCLK(prescale & 0x0E);
+      //   break;
     }
     return tick_sample;
   }
