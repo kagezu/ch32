@@ -143,6 +143,14 @@ int main(void) {
         tick_pix = tick_grid / pix_grid;  // [тактов на пиксель]
         tick_smp = adc.cycle(tick_pix);   // Готовим допустимое значение для АЦП. [тактов на выборку]
 
+// u8 prescale = 0;
+
+// if(tick_pix>=160) { prescale = 8; }
+// else if(tick_pix>=112)  { prescale = 8; }
+  
+  // ADCCLK(prescale);
+
+
         if (tick_smp > tick_pix) {        // Использовать интерполяцию
           record(tick_smp);
           int a = tick_smp;
@@ -152,13 +160,13 @@ int main(void) {
             b >>= 1;
           }
 
-          L.init(a);  // Инициализация коэффициентов Лагранжа
-          L.interpolate2(buffer + SAMPLES - SAMPLES * tick_pix / tick_smp - END_LEN / 2, buffer, SAMPLES, b);
+          // Чтоб немного сэкономить память, пишем в тот же буфер
+          L.interpolate2(buffer + SAMPLES - SAMPLES * tick_pix / tick_smp - END_LEN / 2, buffer, SAMPLES, a, b);
 
           // L.init(pix_smp);  // Инициализация коэффициентов Лагранжа
           // Чтоб немного сэкономить память, пишем в тот же буфер
           // L.interpolate(buffer + SAMPLES - SAMPLES / pix_smp - END_LEN / 2, buffer, SAMPLES);
-        } else record(tick_pix);
+        } else record(tick_pix);  // TS = TP  PS = 1 Один семпл на пиксель
 
         int median, offset;
         osc_window(offset, median);  // Поиск окна по триггеру и среднего напряжения

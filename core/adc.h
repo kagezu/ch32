@@ -55,7 +55,7 @@ public:
     return smp;
   }
 
-  static int cycle(int32_t tick) { return adc_prescale * AdcSmpclk[smp(tick)]; }
+  static u32 cycle(u32 tick) { return adc_prescale * AdcSmpclk[smp(tick)]; }
 
   INLINE void trigger(uint32_t trig) { ADCx()->CTLR2 = (ADCx()->CTLR2 & ~ADC_ExternalTrigConv_None) | trig; }
 
@@ -65,10 +65,40 @@ public:
   INLINE void dma_enable() { ADCx()->CTLR2 |= ADC_DMA; }
 
   INLINE void delay(int time) { ADCx()->SAMPTR2 = smp(time) << (chanel * 3); }
+  INLINE void sample(u32 samp) { ADCx()->SAMPTR2 = samp << (chanel * 3); }
   INLINE void gain(u32 gain) { ADCx()->CTLR1 = ADC_OutputBuffer_Enable | (gain << ADC_GAIN_S); }
   INLINE void single() { ADCx()->CTLR2 |= ADC_ADON | ADC_SWSTART; }
   INLINE void start() { ADCx()->CTLR2 |= ADC_CONT | ADC_ADON | ADC_SWSTART; }
   INLINE void stop() { ADCx()->CTLR2 &= ~(ADC_CONT | ADC_SWSTART); }  // Снять CONT
   INLINE void wait() { while (!(ADCx()->STATR & ADC_EOC)); }
   INLINE uint32_t value() { return ADCx()->RDATAR; }
+
+#define ADC_PRESET_AUTO 0
+#define ADC_PRESET_DUAL 1
+
+  u32 preset(u32 tick, u8 select = ADC_PRESET_AUTO) {
+    u32 tick_sample = 0, samp = 0, prescale;
+    switch (select) {
+      case ADC_PRESET_AUTO:
+        prescale = tick / AdcSmpclk[1];
+        if (prescale > 8) prescale = 8;
+        if (prescale < 2) prescale = 2;
+        ADCCLK(prescale & 0x0E);
+        samp = smp(tick);
+        sample(samp);
+        tick_sample = AdcSmpclk[samp] * prescale;
+        break;
+
+      case ADC_PRESET_DUAL:
+        prescale = tick / AdcSmpclk[0];
+        if (prescale > 8) prescale = 8;
+        if (prescale < 2)
+        { prescale = 2;}
+        else {ADCx()->CTLR2 =0;}
+        ADCCLK(prescale & 0x0E);
+        tick_sample = cycle(tick);
+        break;
+    }
+    return tick_sample;
+  }
 };
