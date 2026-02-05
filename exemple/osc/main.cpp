@@ -6,6 +6,7 @@
 #include "lagrange.h"
 #include "encoder.h"
 #include "fft.h"
+#include "osc.h"
 
 constexpr int ADC_CH   = 3;    // Номер канала ADC
 constexpr int INT_FQ   = 200;  // Hz опрос энкодера
@@ -30,6 +31,7 @@ Lagrange<Lp, MAX_STEP, adc.DEPTH> L;
 FFT<SAMPLES, adc.DEPTH> fft;
 Encoder enc;
 DMA<DMA_ADC1, DMA_VH> dma;
+OSC<SAMPLES, POINTES> data;
 
 short buffer[SAMPLES];
 short points[POINTES];
