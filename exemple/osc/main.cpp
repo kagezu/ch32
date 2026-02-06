@@ -33,10 +33,6 @@ Encoder enc;
 DMA<DMA_ADC1, DMA_VH> dma;
 OSC<SAMPLES, POINTES> data;
 
-short buffer[SAMPLES];
-short points[POINTES];
-short points2[POINTES] = {};
-
 volatile int index = 0;
 int fps            = 20;
 int count          = 0;
@@ -148,11 +144,7 @@ int main(void) {
           }
 
           // Чтоб немного сэкономить память, пишем в тот же буфер
-          L.interpolate2(buffer + SAMPLES - SAMPLES * tick_pix / tick_smp - END_LEN / 2, buffer, SAMPLES, a, b);
-
-          // L.init(pix_smp);  // Инициализация коэффициентов Лагранжа
-          // Чтоб немного сэкономить память, пишем в тот же буфер
-          // L.interpolate(buffer + SAMPLES - SAMPLES / pix_smp - END_LEN / 2, buffer, SAMPLES);
+          L.interpolate2(data.get_buffer() + SAMPLES - SAMPLES * tick_pix / tick_smp - END_LEN / 2, data.get_buffer(), SAMPLES, a, b);
         } else record(tick_pix);  // TS = TP  PS = 1 Один семпл на пиксель
 
         int median, offset;
@@ -161,28 +153,28 @@ int main(void) {
         // Настраиваем масштабирование
         median = VType.value == 0 ? MIDLE_AXIS + ((median * scale) >> adc.DEPTH) : lcd.max_y() - BORDER_BOTTOM;
         median -= ZeroLevel.value;
-        transform_to_display(buffer + offset, points, scale, median);
+        transform_to_display(data.get_buffer() + offset, data.get_points(), scale, median);
         data_draw();
         break;
       }
 
       case MODE_FFT: {
         record(tick_grid);
-        fft.run(buffer);                    // Быстрое преобразование Фурье
-        if (FType.value) fft.sum();         // Применяем суммирующий фильтр
-        fft.sqrt(buffer, lcd.max_x() + 1);  // Находим модуля амплитуд
-        transform_to_display(buffer, points, scale, lcd.max_y() - BORDER_BOTTOM);
+        fft.run(data.get_buffer());                    // Быстрое преобразование Фурье
+        if (FType.value) fft.sum();                    // Применяем суммирующий фильтр
+        fft.sqrt(data.get_buffer(), lcd.max_x() + 1);  // Находим модуля амплитуд
+        transform_to_display(data.get_buffer(), data.get_points(), scale, lcd.max_y() - BORDER_BOTTOM);
         data_draw();
         break;
       }
 
       case MODE_SPEC: {
         record(tick_grid);
-        fft.run(buffer);
-        fft.sqrt(buffer, lcd.max_y() + 2);
+        fft.run(data.get_buffer());
+        fft.sqrt(data.get_buffer(), lcd.max_y() + 2);
 
         for (int i = 1; i < lcd.max_y() + 2; i++) {
-          int val = buffer[i];
+          int val = *(data.get_buffer() + i);
           int r   = val >> 4;
           int g   = val > 1023 ? 255 : val >> 2;
           int b   = val > 255 ? 255 : val;
@@ -236,9 +228,10 @@ void print_info() {
 
 // Поиск окна
 void osc_window(int &offset, int &median) {
-  int min = 1 << adc.DEPTH;
-  int max = 0;
-  offset  = 0;
+  int16_t *buffer = data.get_buffer();
+  int min         = 1 << adc.DEPTH;
+  int max         = 0;
+  offset          = 0;
   for (int i = (POINTES >> 1); i < END_POINT + (POINTES >> 1); i++) {
     const int val = buffer[i];
     if (min > val) min = val;
@@ -309,9 +302,11 @@ void axis_draw() {
 
 // Обновление графика
 void data_draw() {
-  int last   = points2[0];
-  int last2  = points[0];
-  points2[0] = last2;
+  static int16_t points2[POINTES] = {};
+  int16_t *points                 = data.get_points();
+  int last                        = points2[0];
+  int last2                       = points[0];
+  points2[0]                      = last2;
   lcd.viewport(&view);
 
   for (int i = 1; i < POINTES; i++) {
@@ -347,7 +342,7 @@ void init() {
   adc.dma_enable();
   adc.trigger(ADC_ExternalTrigConv_T4_CC4);
 
-  dma.adc(buffer, sizeof(buffer) >> 1);
+  dma.adc(data.get_buffer(), SAMPLES);
   dma.int_compl();
 
   // LCD
