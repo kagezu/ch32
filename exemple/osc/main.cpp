@@ -11,7 +11,7 @@
 constexpr int ADC_CH   = 3;    // Номер канала ADC
 constexpr int INT_FQ   = 200;  // Hz опрос энкодера
 constexpr int INFO_FQ  = 5;    // Hz обновление текста
-constexpr int Lp       = 8;    // Узловых точек для интерполяции Лагранжа (чётная)
+constexpr int L_POINT  = 8;    // Узловых точек для интерполяции Лагранжа (чётная)
 constexpr int MAX_STEP = 30;   // Max шаг узлов интерполяции
 
 // Дисплей
@@ -20,14 +20,14 @@ constexpr int BORDER_TOP    = 66;                                               
 constexpr int BORDER_BOTTOM = 0;                                                              // Отступ от низа экрана
 constexpr int POINTES       = ((lcd.max_x() + 2));                                            // Количество точек для отображения
 constexpr int SAMPLES       = POINTES * 4;                                                    // Количество измерений для анализа
-constexpr int END_LEN       = Lp + 2;                                                         // Резерв для интерполятора
+constexpr int END_LEN       = L_POINT + 2;                                                    // Резерв для интерполятора
 constexpr int END_POINT     = SAMPLES - POINTES - END_LEN;                                    // Последняя точка, с которой может начаться отображение
 constexpr int HEIGHT        = lcd.max_y() - BORDER_BOTTOM - BORDER_TOP;                       // Высота области для граф. данных
 constexpr int MIDLE_AXIS    = (lcd.max_y() - BORDER_BOTTOM - (HEIGHT >> 1));                  // Расположение оси X
 Rect view                   = Rect(0, BORDER_TOP, lcd.max_x(), lcd.max_y() - BORDER_BOTTOM);  // Графическая область
 
 ADC<1> adc(ADC_CH);
-Lagrange<Lp, MAX_STEP, adc.DEPTH> L;
+Lagrange<L_POINT, MAX_STEP, adc.DEPTH> L;
 FFT<SAMPLES, adc.DEPTH> fft;
 Encoder enc;
 DMA<DMA_ADC1, DMA_VH> dma;
@@ -80,11 +80,12 @@ int main(void) {
   int sl            = 0;
 
   while (true) {
-    pix_grid      = Segment.value;
-    tick_grid     = (u32)FqScale.get_item<int>() * (F_CPU / 1000000);  // Умножаем микросекунды на X MHz. [такты на сегмент]
-    int32_t scale = (adc.AREF * pix_grid) / VScale.get_item<int>();    // Масштабирование по напряжению [пикселей на весь диапазон]
-    fps           = fps - (fps >> 2) + (INT_FQ / timer);               // Расчёт FPS
-    timer         = 0;
+    pix_grid       = Segment.value;
+    tick_grid      = (u32)FqScale.get_item<int>() * (F_CPU / 1000000);  // Умножаем микросекунды на X MHz. [такты на сегмент]
+    // uint32_t scale = (adc.AREF * pix_grid) / VScale.get_item<int>();    // Масштабирование по напряжению [пикселей на весь диапазон]
+      uint32_t     scale = ((adc.AREF * pix_grid) / VScale.get_item<int>()) << (16 - adc.DEPTH);  // Q32.16
+    fps            = fps - (fps >> 2) + (INT_FQ / timer);               // Расчёт FPS
+    timer          = 0;
 
     // Инициализация режимов работы при переключении
     if (mode != menu.value) {
@@ -143,17 +144,16 @@ int main(void) {
             b >>= 1;
           }
 
-          // Чтоб немного сэкономить память, пишем в тот же буфер
-          L.interpolate2(data.get_buffer() + SAMPLES - SAMPLES * tick_pix / tick_smp - END_LEN / 2, data.get_buffer(), SAMPLES, a, b);
-        } else record(tick_pix);  // TS = TP  PS = 1 Один семпл на пиксель
+          data.trigger(data.MAXIMUM, POINTES * tick_pix / tick_smp + L_POINT);
+          data.scaling(scale, MIDLE_AXIS);
+          L.interpolate2(data.get_begin(), data.get_points(), POINTES, a, b);
 
-        int median, offset;
-        osc_window(offset, median);  // Поиск окна по триггеру и среднего напряжения
+        } else {
+          record(tick_pix);                                                              // TS = TP  PS = 1 Один семпл на пиксель
+          data.trigger();
+          data.scaling(scale, MIDLE_AXIS, data.POINTS);
+        }
 
-        // Настраиваем масштабирование
-        median = VType.value == 0 ? MIDLE_AXIS + ((median * scale) >> adc.DEPTH) : lcd.max_y() - BORDER_BOTTOM;
-        median -= ZeroLevel.value;
-        transform_to_display(data.get_buffer() + offset, data.get_points(), scale, median);
         data_draw();
         break;
       }
