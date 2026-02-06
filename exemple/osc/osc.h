@@ -30,6 +30,7 @@ public:
 public:
   OSC() {}
 
+  // Q32.12
   void set_scale(int32_t s) { scale = s; }
   void set_offset(uint32_t offset) { offset_y = offset; }
   void set_trigger(uint8_t trig) { trigger = trig; }
@@ -93,25 +94,25 @@ public:
     }
 
     // Уточнение средней линии
-    if (offset_max < begin || offset_max > begin + length || offset_min < begin || offset_min > begin + length) {
-      value_min = INT16_MAX;
-      value_max = INT16_MIN;
-      for (int16_t i = begin; i < begin + length; i++) {
-        const int16_t value = buffer[i];
-        if (value_min > value) value_min = value;
-        if (value_max < value) value_max = value;
-      }
-      median = (value_min + value_max) >> 1;
-    }
+    // if (offset_max < begin || offset_max > begin + length || offset_min < begin || offset_min > begin + length) {
+    //   value_min = INT16_MAX;
+    //   value_max = INT16_MIN;
+    //   for (int16_t i = begin; i < begin + length; i++) {
+    //     const int16_t value = buffer[i];
+    //     if (value_min > value) value_min = value;
+    //     if (value_max < value) value_max = value;
+    //   }
+    //   median = (value_min + value_max) >> 1;
+    // }
 
     int16_t count = length;
     int16_t *in   = buffer + begin + length;
     int16_t *out  = buffer + SMP;
-    offset_y += ((median * scale) >> 12);  // Q32.12 -> Q32
+    int32_t y     = offset_y + ((median * scale) >> 12);  // Q32.12 -> Q32
     while (count--) {
-      int32_t result = offset_y - (((*--in) * scale) >> 12);
-      *--out         = result;// > INT16_MAX ? INT16_MAX : result < INT16_MIN ? INT16_MIN
-                                                                           : result;
+      int32_t result = y - (((*--in) * scale) >> 12);
+      if (result & 0xFFFFF000) result = 0;
+      *--out = result;
     }
     begin = SMP - length;
   }

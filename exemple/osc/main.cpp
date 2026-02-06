@@ -36,10 +36,10 @@ int fps            = 20;
 int count          = 0;
 int timer          = 0;
 
-u32 pix_grid;
-u32 tick_grid;
-u32 tick_smp;
-u32 tick_pix;
+uint32_t pix_grid;
+uint32_t tick_grid;
+uint32_t tick_smp;
+uint32_t tick_pix;
 
 ///////////////////////////////////////////////////////////////////////////////
 
