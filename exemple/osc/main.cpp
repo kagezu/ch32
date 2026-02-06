@@ -20,8 +20,6 @@ constexpr int BORDER_TOP    = 66;                                               
 constexpr int BORDER_BOTTOM = 0;                                                              // Отступ от низа экрана
 constexpr int POINTES       = ((lcd.max_x() + 2));                                            // Количество точек для отображения
 constexpr int SAMPLES       = POINTES * 4;                                                    // Количество измерений для анализа
-constexpr int END_LEN       = L_POINT + 2;                                                    // Резерв для интерполятора
-constexpr int END_POINT     = SAMPLES - POINTES - END_LEN;                                    // Последняя точка, с которой может начаться отображение
 constexpr int HEIGHT        = lcd.max_y() - BORDER_BOTTOM - BORDER_TOP;                       // Высота области для граф. данных
 constexpr int MIDLE_AXIS    = (lcd.max_y() - BORDER_BOTTOM - (HEIGHT >> 1));                  // Расположение оси X
 Rect view                   = Rect(0, BORDER_TOP, lcd.max_x(), lcd.max_y() - BORDER_BOTTOM);  // Графическая область
@@ -31,7 +29,7 @@ Lagrange<L_POINT, MAX_STEP, adc.DEPTH> L;
 FFT<SAMPLES, adc.DEPTH> fft;
 Encoder enc;
 DMA<DMA_ADC1, DMA_VH> dma;
-OSC<SAMPLES, POINTES> data;
+OSC<SAMPLES> data;
 
 volatile int index = 0;
 int fps            = 20;
@@ -80,12 +78,16 @@ int main(void) {
   int sl            = 0;
 
   while (true) {
-    pix_grid       = Segment.value;
-    tick_grid      = (u32)FqScale.get_item<int>() * (F_CPU / 1000000);  // Умножаем микросекунды на X MHz. [такты на сегмент]
-    // uint32_t scale = (adc.AREF * pix_grid) / VScale.get_item<int>();    // Масштабирование по напряжению [пикселей на весь диапазон]
-      uint32_t     scale = ((adc.AREF * pix_grid) / VScale.get_item<int>()) << (16 - adc.DEPTH);  // Q32.16
-    fps            = fps - (fps >> 2) + (INT_FQ / timer);               // Расчёт FPS
-    timer          = 0;
+    fps           = fps - (fps >> 2) + (INT_FQ / timer);  // Расчёт FPS
+    timer         = 0;
+    pix_grid      = Segment.value;
+    tick_grid     = (u32)FqScale.get_item<int>() * (F_CPU / 1000000);  // Умножаем микросекунды на X MHz. [такты на сегмент]
+                                                                       // uint32_t scale = (adc.AREF * pix_grid) / VScale.get_item<int>();    // Масштабирование по напряжению [пикселей на весь диапазон]
+    int32_t scale = ((adc.AREF * pix_grid) / VScale.get_item<int>());  // Q32.12
+
+    data.set_scale(scale);
+    data.set_trigger(TType.value);
+    data.set_offset(MIDLE_AXIS);
 
     // Инициализация режимов работы при переключении
     if (mode != menu.value) {
@@ -144,14 +146,16 @@ int main(void) {
             b >>= 1;
           }
 
-          data.trigger(data.MAXIMUM, POINTES * tick_pix / tick_smp + L_POINT);
-          data.scaling(scale, MIDLE_AXIS);
-          L.interpolate2(data.get_begin(), data.get_points(), POINTES, a, b);
+          data.set_length(POINTES * tick_pix / tick_smp + L_POINT);
+          data.release();
+
+          L.interpolate2(data.get_points(), data.get_buffer(), POINTES, a, b);
+          data.set_points();
 
         } else {
-          record(tick_pix);                                                              // TS = TP  PS = 1 Один семпл на пиксель
-          data.trigger();
-          data.scaling(scale, MIDLE_AXIS, data.POINTS);
+          record(tick_pix);  // TS = TP  PS = 1 Один семпл на пиксель
+          data.set_length(POINTES);
+          data.release();
         }
 
         data_draw();
@@ -222,42 +226,6 @@ void print_info() {
   lcd.prints("             \n");
   lcd.printf("TG: %lu PG: %u TP: %u TS: %u      \n", tick_grid, pix_grid, tick_pix, tick_smp);
   lcd.printf("adc_prescale: %u   ", adc_prescale);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-// Поиск окна
-void osc_window(int &offset, int &median) {
-  int16_t *buffer = data.get_buffer();
-  int min         = 1 << adc.DEPTH;
-  int max         = 0;
-  offset          = 0;
-  for (int i = (POINTES >> 1); i < END_POINT + (POINTES >> 1); i++) {
-    const int val = buffer[i];
-    if (min > val) min = val;
-    else if (max < val) {
-      max    = val;
-      offset = i;
-    }
-  }
-  offset -= POINTES >> 1;
-  median = (min + max) >> 1;
-
-  if (TType.value == Front) {
-    offset = 0;
-    while (offset++ < END_POINT)
-      if (buffer[offset + (POINTES >> 1)] < median) break;
-    while (offset++ < END_POINT)
-      if (buffer[offset + (POINTES >> 1)] > median) break;
-  }
-
-  if (TType.value == Cutoff) {
-    offset = 0;
-    while (offset++ < END_POINT)
-      if (buffer[offset + (POINTES >> 1)] > median) break;
-    while (offset++ < END_POINT)
-      if (buffer[offset + (POINTES >> 1)] < median) break;
-  }
 }
 
 ////////////////////////////////// Axis ///////////////////////////////////////
