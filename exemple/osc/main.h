@@ -24,7 +24,7 @@ ADD_MTEXT(VType, "Current", 0, _vt);
 ADD_MVALUE(ZeroLevel, "Setup zero", 0, -200, 200);
 ADD_MVALUE(Segment, "Scale", 25, 15, 60);
 ADD_MTEXT(FType, "Filter", 0, _ft);
-ADD_MTEXT(TType, "Trigger", 0, _tt);
+ADD_MTEXT(TType, "Trigger", 2, _tt);
 ADD_MITEM(MExit, "< < <");
 
 MItem OSC_Menu = { "\bOSC", ListType, 0, 0, 0, 6 , { &MExit, &FqScale, &VScale, &VType, &ZeroLevel, &TType, &Segment } };

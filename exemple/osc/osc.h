@@ -1,9 +1,10 @@
 #include "core.h"
 
-template <const int SMP>
+template <typename T, const int SMP>
 class OSC {
 private:
-  int16_t buffer[SMP];
+  T (&buffer)
+  [SMP];
   int16_t begin;
   int16_t length;
   int16_t median;
@@ -22,13 +23,13 @@ public:
   constexpr static uint8_t MAXIMUM = 2;
   constexpr static uint8_t MINIMUM = 3;
 
-  constexpr int16_t *get_buffer() { return (int16_t *)buffer; }
+  constexpr T *get_buffer() { return (T *)buffer; }
 
-  int16_t *get_points() { return (int16_t *)(buffer + begin); }
+  T *get_points() { return (T *)(buffer + begin); }
   void set_points(uint16_t start = 0) { begin = start; }
 
 public:
-  OSC() {}
+  OSC(T (&buff)[SMP]) : buffer(buff) { median = 0; }
 
   // Q32.12
   void set_scale(int32_t s) { scale = s; }
@@ -60,13 +61,14 @@ public:
     }
 
     median = (value_min + value_max) >> 1;
+    //  median = 0x800;
 
     switch (trigger) {
       case RISING:
-        if (offset_max > offset_min) offset = offset_min;  // Сканирование начать с минимума
-        else
-          while (offset++ < end)
-            if (buffer[offset] < median) break;
+        // if (offset_max > offset_min) offset = offset_min;  // Сканирование начать с минимума
+        // else
+        while (offset++ < end)
+          if (buffer[offset] < median) break;
 
         while (offset++ < end)
           if (buffer[offset] > median) break;
@@ -74,10 +76,10 @@ public:
         break;
 
       case FALLING:
-        if (offset_max < offset_min) offset = offset_max;  // Сканирование начать с максимума
-        else
-          while (offset++ < end)
-            if (buffer[offset] > median) break;
+        // if (offset_max < offset_min) offset = offset_max;  // Сканирование начать с максимума
+        // else
+        while (offset++ < end)
+          if (buffer[offset] > median) break;
 
         while (offset++ < end)
           if (buffer[offset] < median) break;
@@ -102,12 +104,14 @@ public:
     //     if (value_min > value) value_min = value;
     //     if (value_max < value) value_max = value;
     //   }
-    //   median = (value_min + value_max) >> 1;
+    //   base = (value_min + value_max) >> 1;
     // }
 
+    // median += base - (median >> 5);
+
     int16_t count = length;
-    int16_t *in   = buffer + begin + length;
-    int16_t *out  = buffer + SMP;
+    T *in   = buffer + begin + length;
+    T *out  = buffer + SMP;
     int32_t y     = offset_y + ((median * scale) >> 12);  // Q32.12 -> Q32
     while (count--) {
       int32_t result = y - (((*--in) * scale) >> 12);

@@ -19,17 +19,19 @@ LCD lcd;
 constexpr int BORDER_TOP    = 66;                                                             // 32;                                                             // Отступ от верха экрана
 constexpr int BORDER_BOTTOM = 0;                                                              // Отступ от низа экрана
 constexpr int POINTES       = ((lcd.max_x() + 2));                                            // Количество точек для отображения
-constexpr int SAMPLES       = POINTES * 4;                                                    // Количество измерений для анализа
+constexpr int SAMPLES       = POINTES * 3;                                                    // Количество измерений для анализа
 constexpr int HEIGHT        = lcd.max_y() - BORDER_BOTTOM - BORDER_TOP;                       // Высота области для граф. данных
 constexpr int MIDLE_AXIS    = (lcd.max_y() - BORDER_BOTTOM - (HEIGHT >> 1));                  // Расположение оси X
 Rect view                   = Rect(0, BORDER_TOP, lcd.max_x(), lcd.max_y() - BORDER_BOTTOM);  // Графическая область
+
+s16 buffer[SAMPLES];
 
 ADC<1> adc(ADC_CH);
 Lagrange<L_POINT, MAX_STEP, adc.DEPTH> L;
 FFT<SAMPLES, adc.DEPTH> fft;
 Encoder enc;
 DMA<DMA_ADC1, DMA_VH> dma;
-OSC<SAMPLES> data;
+OSC data(buffer);
 
 volatile int index = 0;
 int fps            = 20;
@@ -58,7 +60,7 @@ void transform_to_display(short in[], short out[], int32_t scale, int32_t offset
 void osc_window(int &offset, int &median);
 
 // Заполнение буфера данными из АЦП
-void record(uint32_t time);
+void record(uint32_t time, uint32_t len);
 
 // Обрамление графики
 void border_draw();
@@ -70,6 +72,59 @@ void data_draw();
 void init();
 
 ///////////////////////////////////////////////////////////////////////////////
+
+void osc(bool update) {
+
+  // Инициализация режима работы
+  if (update) {
+    lcd.scroll(0);
+    lcd.clear();
+    print_info();
+    border_draw();
+    axis_draw();
+  }
+
+  // Обновление фона и информации
+  if (!(count = count < INT_FQ / INFO_FQ ? count : 0)) {
+    print_info();
+    axis_draw();
+  }
+
+  pix_grid       = Segment.value;                                     // Шаг сетки
+  tick_grid      = (u32)FqScale.get_item<int>() * (F_CPU / 1000000);  // Умножаем микросекунды на X MHz. [такты на сегмент]
+  uint32_t scale = ((adc.AREF * pix_grid) / VScale.get_item<int>());  // Q32.12
+
+  data.set_scale(scale);
+  data.set_trigger(TType.value);
+  data.set_offset(MIDLE_AXIS);
+
+  tick_pix = tick_grid / pix_grid;  // [тактов на пиксель]
+  tick_smp = adc.preset(tick_pix);  // Готовим допустимое значение для АЦП. [тактов на выборку]
+
+  if (tick_smp > tick_pix) {        // Использовать интерполяцию
+    record(tick_smp, SAMPLES);      // * tick_pix / tick_smp);
+    int a = tick_smp;
+    int b = tick_pix;
+    while (a > MAX_STEP && b > 1) {  // Сокращаем дробь, если большой числитель
+      a >>= 1;
+      b >>= 1;
+    }
+
+    data.set_length(POINTES * tick_pix / tick_smp + L_POINT);
+    data.release();
+
+    L.interpolate2(data.get_points(), data.get_buffer(), POINTES, a, b);
+    data.set_points();
+
+  } else {
+    record(tick_pix, SAMPLES);  // TS = TP  PS = 1 Один семпл на пиксель
+    data.set_length(POINTES);
+    data.release();
+  }
+
+  data_draw();
+}
+
 
 int main(void) {
   init();
@@ -138,7 +193,7 @@ int main(void) {
         tick_smp = adc.preset(tick_pix);  // Готовим допустимое значение для АЦП. [тактов на выборку]
 
         if (tick_smp > tick_pix) {        // Использовать интерполяцию
-          record(tick_smp);
+          record(tick_smp, SAMPLES);      // * tick_pix / tick_smp);
           int a = tick_smp;
           int b = tick_pix;
           while (a > MAX_STEP && b > 1) {  // Сокращаем дробь, если большой числитель
@@ -153,7 +208,7 @@ int main(void) {
           data.set_points();
 
         } else {
-          record(tick_pix);  // TS = TP  PS = 1 Один семпл на пиксель
+          record(tick_pix, SAMPLES);  // TS = TP  PS = 1 Один семпл на пиксель
           data.set_length(POINTES);
           data.release();
         }
@@ -163,7 +218,7 @@ int main(void) {
       }
 
       case MODE_FFT: {
-        record(tick_grid);
+        record(tick_grid, SAMPLES);
         fft.run(data.get_buffer());                    // Быстрое преобразование Фурье
         if (FType.value) fft.sum();                    // Применяем суммирующий фильтр
         fft.sqrt(data.get_buffer(), lcd.max_x() + 1);  // Находим модуля амплитуд
@@ -173,7 +228,7 @@ int main(void) {
       }
 
       case MODE_SPEC: {
-        record(tick_grid);
+        record(tick_grid, SAMPLES);
         fft.run(data.get_buffer());
         fft.sqrt(data.get_buffer(), lcd.max_y() + 2);
 
@@ -329,11 +384,16 @@ void init() {
 //////////////////////////////////  АЦП  //////////////////////////////////////
 
 // Один канал
-void record_adc(uint32_t time) {
+void record_adc(uint32_t time, uint32_t len) {
   // tim4.disable();
   // adc.delay(time);          // Устанавливаем время выборки АЦП
-  tim4.TOP(time - 1);       // Количество тактов между семплами
+  tim4.TOP(time - 1);  // Количество тактов между семплами
   tim4.enable();
+
+  // dma.adc(data.get_buffer(), len);
+  // dma.int_compl();
+
+  dma.CNT(len);
   dma.start();              // Запускаем передачу данных из АЦП в буфер
   while (dma.is_active());  // Ожидаем завершения работы DMA
   tim4.disable();
@@ -351,8 +411,8 @@ void record_dual(uint32_t time) {
 }
 
 // Заполнение буфера данными из АЦП
-void record(uint32_t time) {
-  record_adc(time);
+void record(uint32_t time, uint32_t len) {
+  record_adc(time, len);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
