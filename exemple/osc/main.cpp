@@ -7,6 +7,7 @@
 #include "encoder.h"
 #include "fft.h"
 #include "osc.h"
+#include "grid.h"
 
 constexpr int ADC_CH   = 3;    // Номер канала ADC
 constexpr int INT_FQ   = 200;  // Hz опрос энкодера
@@ -127,18 +128,25 @@ void osc(bool update) {
 
 
 int main(void) {
+  init_convert_x();
   init();
 
   volatile int mode = -1;
   int sl            = 0;
 
   while (true) {
-    fps           = fps - (fps >> 2) + (INT_FQ / timer);  // Расчёт FPS
-    timer         = 0;
-    pix_grid      = Segment.value;
+    fps   = fps - (fps >> 2) + (INT_FQ / timer);  // Расчёт FPS
+    timer = 0;
+    // pix_grid      = Segment.value;
+
+    pix_grid     = (0x0F & convert_x[Segment.value]) << 2;
+    FqScale.value = convert_x[Segment.value] >> 4;
+
+
     tick_grid     = (u32)FqScale.get_item<int>() * (F_CPU / 1000000);  // Умножаем микросекунды на X MHz. [такты на сегмент]
                                                                        // uint32_t scale = (adc.AREF * pix_grid) / VScale.get_item<int>();    // Масштабирование по напряжению [пикселей на весь диапазон]
-    int32_t scale = ((adc.AREF * pix_grid) / VScale.get_item<int>());  // Q32.12
+    // int32_t scale = ((adc.AREF * pix_grid) / VScale.get_item<int>());  // Q32.12
+    int32_t scale = ((adc.AREF * 24) / VScale.get_item<int>());  // Q32.12
 
     data.set_scale(scale);
     data.set_trigger(TType.value);
@@ -294,30 +302,30 @@ void border_draw() {
 }
 
 // Сетка
-void axis_draw_raw(int segment) {
+void axis_draw_raw(int x, int y) {
   lcd.h_line((lcd.max_x() >> 1), BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
-  for (int i = 1; i <= lcd.max_x() / (segment * 2); i++) {
-    lcd.h_line((lcd.max_x() >> 1) + i * segment, BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
-    lcd.h_line((lcd.max_x() >> 1) - i * segment, BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
+  for (int i = 1; i <= lcd.max_x() / (x * 2); i++) {
+    lcd.h_line((lcd.max_x() >> 1) + i * x, BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
+    lcd.h_line((lcd.max_x() >> 1) - i * x, BORDER_TOP, lcd.max_y() - BORDER_BOTTOM);
   }
 
   lcd.w_line(0, MIDLE_AXIS, lcd.max_x() - 0);
-  for (int i = 0; i <= (HEIGHT / segment); i++) {
-    lcd.w_line(0, MIDLE_AXIS + i * segment, lcd.max_x());
-    lcd.w_line(0, MIDLE_AXIS - i * segment, lcd.max_x());
+  for (int i = 0; i <= (HEIGHT / y); i++) {
+    lcd.w_line(0, MIDLE_AXIS + i * y, lcd.max_x());
+    lcd.w_line(0, MIDLE_AXIS - i * y, lcd.max_x());
   }
 }
 
 void axis_draw() {
   static int old_seg = 0;
   lcd.viewport(&view);
-  if (Segment.value != old_seg) {
+  if (pix_grid != old_seg) {
     lcd.color(Black);
-    axis_draw_raw(old_seg);
-    old_seg = Segment.value;
+    axis_draw_raw(old_seg,24);
+    old_seg = pix_grid;
   }
   lcd.color(Teal);
-  axis_draw_raw(old_seg);
+  axis_draw_raw(old_seg,24);
   border_draw();
 }
 

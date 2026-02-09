@@ -22,7 +22,7 @@ ADD_MINT(FqScale, "Time", 9, _fq);
 ADD_MINT(VScale, "Voltage", 0, _vsc);
 ADD_MTEXT(VType, "Current", 0, _vt);
 ADD_MVALUE(ZeroLevel, "Setup zero", 0, -200, 200);
-ADD_MVALUE(Segment, "Scale", 25, 15, 60);
+ADD_MVALUE(Segment, "Scale", 25, 0, 200);
 ADD_MTEXT(FType, "Filter", 0, _ft);
 ADD_MTEXT(TType, "Trigger", 2, _tt);
 ADD_MITEM(MExit, "< < <");
