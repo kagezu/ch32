@@ -1,4 +1,6 @@
-#define WR_FORSED     // Аппаратное тактирование
+#pragma once
+
+// #define WR_FORSED     // Аппаратное тактирование
 #include "display.h"
 
 // Цветовая модель

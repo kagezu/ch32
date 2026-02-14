@@ -1,13 +1,13 @@
-#include "core.h"
+// #pragma once
+#include "main.h"
 
-template <typename T, const int SMP>
+
 class OSC {
 private:
-  T (&buffer)
-  [SMP];
-  int16_t begin;
-  int16_t length;
-  int16_t median;
+  s16 buffer[SAMPLES];
+  s16 begin;
+  s16 length;
+  s16 median;
   int32_t scale;
 
   int32_t offset_y;
@@ -18,19 +18,17 @@ public:
   constexpr static bool BUFFER = false;
   constexpr static bool POINTS = true;
 
-  constexpr static uint8_t RISING  = 0;
-  constexpr static uint8_t FALLING = 1;
-  constexpr static uint8_t MAXIMUM = 2;
-  constexpr static uint8_t MINIMUM = 3;
+  constexpr static u8 RISING  = 0;
+  constexpr static u8 FALLING = 1;
+  constexpr static u8 MAXIMUM = 2;
+  constexpr static u8 MINIMUM = 3;
 
-  constexpr T *get_buffer() { return (T *)buffer; }
+  constexpr s16 *get_buffer() { return buffer; }
 
-  T *get_points() { return (T *)(buffer + begin); }
+  s16 *get_points() { return (s16 *)(buffer + begin); }
   void set_points(uint16_t start = 0) { begin = start; }
 
 public:
-  OSC(T (&buff)[SMP]) : buffer(buff) { median = 0; }
-
   // Q32.12
   void set_scale(int32_t s) { scale = s; }
   void set_offset(uint32_t offset) { offset_y = offset; }
@@ -110,8 +108,8 @@ public:
     // median += base - (median >> 5);
 
     int16_t count = length;
-    T *in   = buffer + begin + length;
-    T *out  = buffer + SMP;
+    s16 *in   = buffer + begin + length;
+    s16 *out  = buffer + SMP;
     int32_t y     = offset_y + ((median * scale) >> 12);  // Q32.12 -> Q32
     while (count--) {
       int32_t result = y - (((*--in) * scale) >> 12);
@@ -120,6 +118,11 @@ public:
     }
     begin = SMP - length;
   }
+
+
+
+
+
 };
 
 

@@ -1,14 +1,9 @@
 #include "main.h"
-#include "lcd.h"
-#include "adc.h"
-#include "timer.h"
-#include "dma.h"
-#include "lagrange.h"
-#include "encoder.h"
-#include "fft.h"
+#include "menu-data.h"
 #include "osc.h"
 #include "grid.h"
 
+/*
 constexpr int ADC_CH   = 3;    // Номер канала ADC
 constexpr int INT_FQ   = 200;  // Hz опрос энкодера
 constexpr int INFO_FQ  = 5;    // Hz обновление текста
@@ -33,6 +28,19 @@ FFT<SAMPLES, adc.DEPTH> fft;
 Encoder enc;
 DMA<DMA_ADC1, DMA_VH> dma;
 OSC data(buffer);
+
+volatile int index = 0;
+int fps            = 20;
+int count          = 0;
+int timer          = 0;
+
+uint32_t pix_grid;
+uint32_t tick_grid;
+uint32_t tick_smp;
+uint32_t tick_pix;
+*/
+
+OSC data;
 
 volatile int index = 0;
 int fps            = 20;

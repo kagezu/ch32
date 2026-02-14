@@ -1,36 +1,33 @@
-#include "menu.h"
+#pragma once
+#include "lcd.h"
+#include "lagrange.h"
+#include "adc.h"
+#include "timer.h"
+#include "dma.h"
+#include "fft.h"
+#include "encoder.h"
 
-enum AppModeEnum :int {
-  MODE_OSC,
-  MODE_FFT,
-  MODE_SPEC
-};
+constexpr int ADC_CH   = 3;    // Номер канала ADC
+constexpr int INT_FQ   = 200;  // Hz опрос энкодера
+constexpr int INFO_FQ  = 5;    // Hz обновление текста
+constexpr int L_POINT  = 8;    // Узловых точек для интерполяции Лагранжа (чётная)
+constexpr int MAX_STEP = 30;   // Max шаг узлов интерполяции
 
-// enum Trigger :int {
-//   Front,
-//   Cutoff,
-//   Maximum
-// };
+// Дисплей
+LCD lcd;
+constexpr int BORDER_TOP    = 66;                                                             // 32;                                                             // Отступ от верха экрана
+constexpr int BORDER_BOTTOM = 0;                                                              // Отступ от низа экрана
+constexpr int POINTES       = ((lcd.max_x() + 2));                                            // Количество точек для отображения
+constexpr int SAMPLES       = POINTES * 3;                                                    // Количество измерений для анализа
+constexpr int HEIGHT        = lcd.max_y() - BORDER_BOTTOM - BORDER_TOP;                       // Высота области для граф. данных
+constexpr int MIDLE_AXIS    = (lcd.max_y() - BORDER_BOTTOM - (HEIGHT >> 1));                  // Расположение оси X
+Rect view                   = Rect(0, BORDER_TOP, lcd.max_x(), lcd.max_y() - BORDER_BOTTOM);  // Графическая область
 
-const int _fq[] = { 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000 };
-const int _vsc[] = { 200, 100, 50, 20, 10, 5, 2, 1 };
-const char *_vt[] = { "AC", "DC" };
-const char *_ft[] = { "Off", "Sum" };
-const char *_tt[] = { "RISING", "FALLING", "MAXIMUM", "MINIMUM" };
+s16 buffer[SAMPLES];
 
-ADD_MINT(FqScale, "Time", 9, _fq);
-ADD_MINT(VScale, "Voltage", 0, _vsc);
-ADD_MTEXT(VType, "Current", 0, _vt);
-ADD_MVALUE(ZeroLevel, "Setup zero", 0, -200, 200);
-ADD_MVALUE(Segment, "Scale", 25, 0, 200);
-ADD_MTEXT(FType, "Filter", 0, _ft);
-ADD_MTEXT(TType, "Trigger", 2, _tt);
-ADD_MITEM(MExit, "< < <");
+ADC<1> adc(ADC_CH);
+Lagrange<L_POINT, MAX_STEP, adc.DEPTH> L;
+FFT<SAMPLES, adc.DEPTH> fft;
+Encoder enc;
+DMA<DMA_ADC1, DMA_VH> dma;
 
-MItem OSC_Menu = { "\bOSC", ListType, 0, 0, 0, 6 , { &MExit, &FqScale, &VScale, &VType, &ZeroLevel, &TType, &Segment } };
-MItem FFT_Menu = { "\bFFT", ListType, 0, 0, 0, 3 , { &MExit, &FqScale, &VScale, &FType } };
-MItem SPEC_Menu = { "\bSPEC", ListType, 0, 0, 0, 0 , { &MExit } };
-
-MItem menu = { "", ListType, 0, 0, 0, 2, { &OSC_Menu, &FFT_Menu, &SPEC_Menu } };
-
-#define RTC_REG_SAVED 2
