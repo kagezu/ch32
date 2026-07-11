@@ -5,9 +5,19 @@
 class OSC {
 private:
   s16 buffer[SAMPLES];
+  s16 output[2][POINTES];
+  int current_out = 0;
+
+
+  s16 median;
+  s16 value_min;
+  s16 value_max;
+  s16 offset_min;
+  s16 offset_max;
+
+
   s16 begin;
   s16 length;
-  s16 median;
   int32_t scale;
 
   int32_t offset_y;
@@ -24,9 +34,7 @@ public:
   constexpr static u8 MINIMUM = 3;
 
   constexpr s16 *get_buffer() { return buffer; }
-
-  s16 *get_points() { return (s16 *)(buffer + begin); }
-  void set_points(uint16_t start = 0) { begin = start; }
+  s16 *get_points() { return (s16 *)buffer[current_out]; }
 
 public:
   // Q32.12
@@ -35,11 +43,44 @@ public:
   void set_trigger(uint8_t trig) { trigger = trig; }
   void set_length(uint16_t len) { length = len; }
 
+  // Средние значение
+  void seek_median() {
+    sc16 start = length >> 1;
+    sc16 end   = SAMPLES - start;
+    value_min           = INT16_MAX;
+    value_max           = INT16_MIN;
+    offset_min          = start;
+    offset_max          = start;
+
+    for (int16_t i = start; i < end; i++) {
+      const int16_t value = buffer[i];
+      if (value_min > value) {
+        value_min  = value;
+        offset_min = i;
+      }
+      if (value_max < value) {
+        value_max  = value;
+        offset_max = i;
+      }
+    }
+
+    median = (value_min + value_max) >> 1;
+    //  median = 0x800;
+  }
+
+  // Поиск окна
+  void seek_window() {
+    s16 offset = length >> 1;
+    s16 end   = SAMPLES - offset;
+
+
+  }
+
 
   // Применить переобразования
   void release() {
     const int16_t start = length >> 1;
-    const int16_t end   = SMP - start;
+    const int16_t end   = SAMPLES - start;
     int16_t value_min   = INT16_MAX;
     int16_t value_max   = INT16_MIN;
     int16_t offset_min  = start;
@@ -108,21 +149,16 @@ public:
     // median += base - (median >> 5);
 
     int16_t count = length;
-    s16 *in   = buffer + begin + length;
-    s16 *out  = buffer + SMP;
+    s16 *in       = buffer + begin + length;
+    s16 *out      = buffer + SAMPLES;
     int32_t y     = offset_y + ((median * scale) >> 12);  // Q32.12 -> Q32
     while (count--) {
       int32_t result = y - (((*--in) * scale) >> 12);
       if (result & 0xFFFFF000) result = 0;
       *--out = result;
     }
-    begin = SMP - length;
+    begin = SAMPLES - length;
   }
-
-
-
-
-
 };
 
 

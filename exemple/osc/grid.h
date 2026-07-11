@@ -16,7 +16,7 @@ void init_convert_x() {
   sc16 max_range = sizeof(_fq) >> 1;
 
   while (count < MAX_X_GRID && range < max_range) {
-    convert_x[count++] = pix)| (range << 8);
+    convert_x[count++] = pix | (range << 8);
     // pix -= STEP_PIX_GRID;
     pix--;
     if (pix < MIN_PIX_GRID) {

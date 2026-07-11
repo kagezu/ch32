@@ -123,7 +123,7 @@ void osc(bool update) {
     data.release();
 
     L.interpolate2(data.get_points(), data.get_buffer(), POINTES, a, b);
-    data.set_points();
+    // data.set_points();
 
   } else {
     record(tick_pix, SAMPLES);  // TS = TP  PS = 1 Один семпл на пиксель
@@ -221,7 +221,7 @@ int main(void) {
           data.release();
 
           L.interpolate2(data.get_points(), data.get_buffer(), POINTES, a, b);
-          data.set_points();
+          // data.set_points();
 
         } else {
           record(tick_pix, SAMPLES);  // TS = TP  PS = 1 Один семпл на пиксель
